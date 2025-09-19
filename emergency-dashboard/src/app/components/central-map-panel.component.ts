@@ -271,7 +271,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       const isMyUnit = responder.id === myUnitId;
       const baseIcon = this.responderIconHtml(responder.unitType);
       const myUnitIcon = this.mapMode === 'Flood'
-        ? `💧${baseIcon}<span style="font-size:1.1em;">★</span>`
+        ? `${baseIcon}<span style="font-size:1.1em;">★</span>`
         : `${baseIcon}<span style="font-size:1.1em;">★</span>`;
       const icon = L.divIcon({
         className: `responder-icon ${responder.unitType.toLowerCase()}${isMyUnit ? ' my-unit' : ''}`,
@@ -457,9 +457,9 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         <div class="legend-row"><span class="legend-swatch active-zone ${mode.toLowerCase()}"></span><span class="legend-label">Active ${mode} Zone</span></div>
         <div class="legend-row"><span class="legend-swatch forecast ${mode.toLowerCase()}"></span><span class="legend-label">Forecast Spread</span></div>
         <div class="legend-row"><span class="legend-icon">🧑‍🤝‍🧑</span><span class="legend-label">Victim Cluster</span></div>
-        <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '💧🚑' : '🚑'}</span><span class="legend-label">Responder Unit</span></div>
-  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '💧🏥' : '🏥'}</span><span class="legend-label">Hospital</span></div>
-  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '💧🛟' : '🛟'}</span><span class="legend-label">Safe Zone</span></div>
+        <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🚑' : '🚑'}</span><span class="legend-label">Responder Unit</span></div>
+  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🏥' : '🏥'}</span><span class="legend-label">Hospital</span></div>
+  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🛟' : '🛟'}</span><span class="legend-label">Safe Zone</span></div>
       `;
       return div;
     };
@@ -487,10 +487,10 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     // Flood mode: prefix with droplet to reinforce context
     if (this.mapMode === 'Flood') {
       switch (type) {
-        case 'Ambulance': return '💧🚑';
-        case 'Fire': return '💧🚒';
-        case 'Police': return '💧🚓';
-        default: return '💧🚨';
+        case 'Ambulance': return '🚑';
+        case 'Fire': return '🚒';
+        case 'Police': return '🚓';
+        default: return '🚨';
       }
     }
     switch (type) {
