@@ -1,0 +1,42 @@
+<mat-toolbar [ngClass]="{'header-fire': mapMode === 'Fire', 'header-flood': mapMode === 'Flood'}" class="header-toolbar mat-elevation-z4">
+  <div class="header-section">
+    <mat-icon class="header-icon" color="accent">warning</mat-icon>
+    <span class="header-title">Emergency Dashboard</span>
+  </div>
+  <mat-form-field appearance="outline" class="incident-selector" color="accent" floatLabel="always">
+    <mat-label><mat-icon>event</mat-icon> Incident</mat-label>
+    <mat-select [value]="selectedIncident" (selectionChange)="onIncidentChange($event)" disableRipple>
+      <mat-option *ngFor="let incident of incidents" [value]="incident">
+        <mat-icon *ngIf="incident.toLowerCase().includes('fire')" color="warn">local_fire_department</mat-icon>
+        <mat-icon *ngIf="incident.toLowerCase().includes('flood')" color="primary">waves</mat-icon>
+        {{incident}}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+  <div class="map-mode-switch">
+    <button mat-stroked-button [color]="mapMode === 'Fire' ? 'warn' : 'primary'" (click)="onMapModeChange('Fire')">
+      <mat-icon>local_fire_department</mat-icon> Fire
+    </button>
+    <button mat-stroked-button [color]="mapMode === 'Flood' ? 'primary' : ''" (click)="onMapModeChange('Flood')">
+      <mat-icon>waves</mat-icon> Flood
+    </button>
+  </div>
+  <div class="forecast-slider">
+    <mat-label><mat-icon>schedule</mat-icon> Forecast (hrs)</mat-label>
+    <mat-slider min="0" max="6" step="1" color="accent" thumbLabel tickInterval="1">
+      <input matSliderThumb [(ngModel)]="forecastHour" (ngModelChange)="onForecastChange($event)" />
+    </mat-slider>
+    <span class="forecast-value">{{forecastHour}}h</span>
+  </div>
+  <div class="priority-filters">
+    <ng-container *ngFor="let p of priorities">
+      <button mat-raised-button [color]="priority === p ? 'accent' : ''" (click)="onPriorityChange(p)">
+        <mat-icon *ngIf="p==='Immediate'" color="warn">priority_high</mat-icon>
+        <mat-icon *ngIf="p==='High'">arrow_upward</mat-icon>
+        <mat-icon *ngIf="p==='Medium'">arrow_forward</mat-icon>
+        <mat-icon *ngIf="p==='Low'">arrow_downward</mat-icon>
+        {{p}}
+      </button>
+    </ng-container>
+  </div>
+</mat-toolbar>

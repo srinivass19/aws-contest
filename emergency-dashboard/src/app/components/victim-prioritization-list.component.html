@@ -1,0 +1,27 @@
+<div class="victim-list-panel">
+  <h2>Victim Prioritization</h2>
+  <ul>
+    <li *ngFor="let cluster of filteredClusters; trackBy: trackById" class="victim-cluster">
+      <div class="priority-label {{ getPriorityLabel(cluster) | lowercase }}">
+        {{ getPriorityLabel(cluster) }}
+      </div>
+      <div class="cluster-main">
+        <div class="cluster-title">{{ cluster.name }} <span class="cluster-id">({{ cluster.id }})</span></div>
+        <div class="location">
+          <span>📍 {{ cluster.location.lat }}, {{ cluster.location.lon }}</span>
+          <span class="uncertainty">±{{ cluster.location.uncertainty }}m</span>
+        </div>
+        <div class="victim-count">Victims: {{ cluster.numVictims }}</div>
+        <div class="needs">
+          Needs: <span *ngFor="let need of cluster.needs; let last = last">{{ need }}<span *ngIf="!last">, </span></span>
+        </div>
+        <div class="confidence">AI Confidence: {{ cluster.confidence | percent:'1.0-0' }}</div>
+        <div class="status">Status: <span class="status-label">{{ cluster.status }}</span></div>
+      </div>
+      <div class="actions">
+        <button mat-stroked-button color="primary" (click)="assignResponder.emit(cluster.id)">Assign Responder</button>
+        <button mat-stroked-button color="accent" (click)="addNote.emit(cluster.id)">Add Note</button>
+      </div>
+    </li>
+  </ul>
+</div>

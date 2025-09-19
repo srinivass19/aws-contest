@@ -1,0 +1,72 @@
+
+
+app-footer-notification-panel {
+  width: 100%;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.dashboard-layout {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	padding-top: 64px; /* header height */
+	padding-bottom: 120px; /* footer height */
+	box-sizing: border-box;
+}
+
+.dashboard-main {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+app-victim-prioritization-list {
+	flex: 0 0 320px;
+	min-width: 320px;
+	max-width: 400px;
+	border-right: 2px solid #e0e0e0;
+	background: #fafafa;
+	height: 100%;
+	overflow-y: auto;
+}
+
+app-central-map-panel {
+	flex: 1 1 0;
+	min-width: 0;
+	height: 100%;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: #bdbdbd #f5f5f5;
+}
+
+app-central-map-panel::-webkit-scrollbar {
+	width: 8px;
+	background: #f5f5f5;
+}
+app-central-map-panel::-webkit-scrollbar-thumb {
+	background: #bdbdbd;
+	border-radius: 4px;
+}
+
+app-central-map-panel::-webkit-scrollbar {
+	width: 8px;
+	background: #f5f5f5;
+}
+app-central-map-panel::-webkit-scrollbar-thumb {
+	background: #bdbdbd;
+	border-radius: 4px;
+}
+
+app-right-panel-ai-assistant {
+	flex: 0 0 360px;
+	min-width: 320px;
+	max-width: 400px;
+	height: 100%;
+	border-left: 2px solid #e0e0e0;
+	background: #f5f5f5;
+	overflow-y: auto;
+}

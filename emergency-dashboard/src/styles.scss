@@ -1,0 +1,25 @@
+// Style the incidents dropdown (mat-select-panel) for a modern look
+.mat-select-panel {
+	background: #f8fafc !important;
+	color: #222 !important;
+	border-radius: 10px !important;
+	box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 1.5px 4px rgba(0,0,0,0.08);
+	border: 1px solid #e0e7ef;
+	padding: 4px 0;
+}
+
+.mat-option {
+	border-radius: 6px;
+	margin: 0 4px;
+	transition: background 0.2s;
+}
+.mat-option.mat-active, .mat-option:hover {
+	background: #e3e8f0 !important;
+	color: #111 !important;
+}
+// Ensure Angular Material overlays (dropdowns, dialogs, etc.) always appear above all content
+.cdk-overlay-container, .cdk-overlay-pane {
+	z-index: 2000 !important;
+}
+/* You can add global styles to this file, and also import other style files */
+@import 'leaflet/dist/leaflet.css';

@@ -1,0 +1,44 @@
+<div class="dashboard-layout">
+		<app-header-toolbar
+			[incidents]="incidents"
+			[selectedIncident]="selectedIncident"
+			[mapMode]="mapMode"
+			[forecastHour]="forecastHour"
+			[priority]="priority"
+			(incidentChange)="onIncidentChange($event)"
+			(mapModeChange)="onMapModeChange($event)"
+			(forecastHourChange)="noop()"
+			(priorityChange)="priority = $event"
+		/>
+	<div class="dashboard-main">
+			<app-victim-prioritization-list
+				[clusters]="clusters"
+				[priority]="priority"
+				(assignResponder)="onAssignResponder($event)"
+				(addNote)="onAddNote($event)"
+			/>
+			<app-central-map-panel
+				[hazardZones]="hazardZones"
+				[hazardPredictions]="hazardPredictions"
+				[victimClusters]="mapVictimClusters"
+				[responders]="responders"
+				[routes]="routes"
+				[facilities]="facilities"
+				[predictionTimestamp]="predictionTimestamp"
+				[mapMode]="mapMode"
+				(predictionTimestampChange)="predictionTimestamp = $event"
+			/>
+		<app-right-panel-ai-assistant
+			[summary]="aiSummary"
+			[responderQuery]="responderQuery"
+			(responderQueryChange)="onResponderQueryChange($event)"
+			(submitQuery)="onSubmitResponderQuery()"
+		/>
+	</div>
+	<app-footer-notification-panel
+		[events]="notificationEvents"
+		[filter]="notificationFilter"
+		(filterChange)="onNotificationFilterChange($event)"
+		(markAsRead)="onMarkNotificationAsRead($event)"
+	/>
+</div>

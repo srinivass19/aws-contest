@@ -1,0 +1,14 @@
+<div class="right-panel-ai-assistant">
+  <h3>AI Assistant & Localized Summaries</h3>
+  <div class="summary-box">
+    <label>Text Summary</label>
+    <div class="summary-content">{{ summary || 'Awaiting AI-generated update...' }}</div>
+    <button mat-raised-button color="primary" (click)="playTTS()">🔊 Play Voice</button>
+  </div>
+  <div class="responder-queries">
+    <label>Responder Query</label>
+  <input placeholder="Type your question..." [value]="responderQuery" (input)="onQueryInput($event)" (keyup.enter)="onSubmit()" />
+    <button mat-stroked-button color="accent" (click)="onSubmit()">Ask AI</button>
+    <!-- Optionally, add a voice input button here -->
+  </div>
+</div>

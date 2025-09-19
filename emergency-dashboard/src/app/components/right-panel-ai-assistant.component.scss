@@ -1,0 +1,32 @@
+.right-panel-ai-assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: #f5f5f5;
+  border-left: 2px solid #e0e0e0;
+  padding: 1.5rem 1rem;
+  height: 100%;
+  min-width: 320px;
+  max-width: 400px;
+}
+.summary-box {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.summary-content {
+  min-height: 60px;
+  margin: 0.5rem 0 1rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+.responder-queries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+input[matInput] {
+  margin-bottom: 0.5rem;
+}

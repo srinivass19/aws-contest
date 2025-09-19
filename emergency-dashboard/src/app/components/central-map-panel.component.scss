@@ -1,0 +1,104 @@
+// Route arrow icons
+.route-arrow.suggested {
+  filter: drop-shadow(0 0 2px #388e3c);
+}
+.route-arrow.alternate {
+  filter: drop-shadow(0 0 2px #ff9800);
+}
+.central-map-panel {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  background: #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.timestamp-slider {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  background: rgba(255,255,255,0.95);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 10;
+}
+.timestamp-slider label {
+  font-weight: 500;
+}
+.timestamp-slider input[type=range] {
+  width: 180px;
+}
+.timestamp-slider span {
+  font-size: 0.98em;
+  color: #333;
+}
+
+// Facility icons (🏥, 🛟, etc.)
+.facility-icon {
+  font-size: 2.8rem;
+  line-height: 2.8rem;
+  text-align: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+  border: 2px solid #1976d2;
+}
+
+// Victim cluster icons
+.victim-icon {
+  font-size: 2.1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  border: 2px solid #b71c1c;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+.victim-icon.assigned {
+  border: 3px solid #ffeb3b;
+  background: #fffde7;
+  box-shadow: 0 0 0 4px #fffde7;
+}
+.victim-icon.immediate { border-color: #b71c1c; }
+.victim-icon.high { border-color: #f44336; }
+.victim-icon.medium { border-color: #ff9800; }
+.victim-icon.low { border-color: #1976d2; }
+
+// Responder icons
+.responder-icon {
+  font-size: 2.2rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #388e3c;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+.responder-icon.my-unit {
+  border: 3px solid #ff1744;
+  background: #fff3f3;
+  box-shadow: 0 0 0 4px #fff3f3;
+}

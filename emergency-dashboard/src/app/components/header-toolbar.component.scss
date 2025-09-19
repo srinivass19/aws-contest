@@ -1,0 +1,182 @@
+.incident-selector .mat-option {
+  background: #fff8e1 !important; /* light yellow for visibility */
+  color: #222 !important;
+}
+.incident-selector .mat-option.mat-active {
+  background: #ffe0b2 !important; /* slightly darker on hover/active */
+  color: #222 !important;
+}
+
+.header-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100vw;
+  min-width: 0;
+  z-index: 1100;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+  height: 72px;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+
+
+.mat-mdc-option.mdc-list-item {
+    background: #fff8e1 !important; /* light yellow for visibility */
+    color: #222 !important;
+}
+.header-fire {
+  background: linear-gradient(90deg, #ff5722 0%, #ff9800 100%);
+}
+.header-flood {
+  background: linear-gradient(90deg, #1976d2 0%, #42a5f5 100%);
+}
+.incident-selector .mat-select-panel {
+  z-index: 1200 !important;
+  background: #fffde7 !important; /* light yellow background */
+}
+.incident-selector {
+  min-width: 180px;
+  max-width: 260px;
+  flex: 1 1 200px;
+  overflow: hidden;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  margin-top: 0;
+  padding-top: 6px;
+}
+
+// Remove transparency from dropdown
+.incident-selector .mat-form-field-flex {
+  background: #f8fafc !important;
+  color: #222 !important;
+  opacity: 1 !important;
+  border-radius: 8px !important;
+  border: 1px solid #e0e7ef !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  min-width: 0;
+  max-width: 260px;
+  overflow: hidden;
+  height: 32px !important;
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+}
+.incident-selector .mat-select-value-text {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  display: block;
+}
+.incident-selector .mat-form-field-wrapper {
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+  height: 40px !important;
+  display: flex;
+  align-items: center;
+}
+.incident-selector .mat-select {
+  background: #f8fafc !important;
+  color: #222 !important;
+  border-radius: 8px !important;
+}
+.map-mode-switch button {
+  margin-right: 8px;
+}
+.forecast-slider {
+  display: flex;
+  align-items: center;
+  .header-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 18px;
+    padding: 0 24px;
+    min-height: 64px;
+    position: relative;
+    z-index: 1100;
+  }
+  .header-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 16px;
+  }
+  .header-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .header-icon {
+    font-size: 2rem;
+    margin-right: 2px;
+  }
+  .incident-selector .mat-select-panel {
+    z-index: 1200 !important;
+  }
+  .incident-selector {
+    min-width: 180px;
+    margin-right: 18px;
+    max-width: 260px;
+  }
+  .incident-selector .mat-form-field-flex {
+    background: #fff !important;
+    color: #222 !important;
+    opacity: 1 !important;
+    border-radius: 8px !important;
+    border: 1px solid #e0e7ef !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .incident-selector .mat-select {
+    background: #fff !important;
+    color: #222 !important;
+    border-radius: 8px !important;
+  }
+  .map-mode-switch button {
+    margin-right: 8px;
+    min-width: 90px;
+    font-weight: 500;
+  }
+  .forecast-slider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 200px;
+    margin-right: 18px;
+  }
+  .forecast-slider mat-label {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-right: 8px;
+  }
+  .forecast-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-left: 8px;
+  }
+  .priority-filters button {
+    margin-right: 4px;
+    min-width: 90px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  }

@@ -1,0 +1,72 @@
+.victim-list-panel {
+  width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.victim-list-panel h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.victim-cluster {
+  border-bottom: 1px solid #eee;
+  padding: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.priority-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 1rem;
+  padding: 0.2rem 0.8rem;
+  display: inline-block;
+  margin-bottom: 0.2rem;
+}
+.priority-label.immediate { background: #ff5252; color: #fff; }
+.priority-label.high { background: #ff9800; color: #fff; }
+.priority-label.medium { background: #ffeb3b; color: #333; }
+.priority-label.low { background: #bdbdbd; color: #333; }
+
+.cluster-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cluster-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.cluster-id {
+  color: #888;
+  font-size: 0.9em;
+}
+.location {
+  font-size: 0.95em;
+  color: #444;
+}
+.uncertainty {
+  color: #888;
+  margin-left: 0.5em;
+}
+.victim-count, .needs, .confidence, .status {
+  font-size: 0.93em;
+}
+.status-label {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}

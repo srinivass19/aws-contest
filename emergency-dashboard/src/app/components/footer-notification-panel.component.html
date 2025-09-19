@@ -1,0 +1,20 @@
+<div class="footer-notification-panel">
+  <div class="notification-controls">
+    <label>Filter:</label>
+  <select (change)="onFilterChange($event)">
+      <option [selected]="filter === 'all'" value="all">All</option>
+      <option [selected]="filter === 'road'" value="road">Road Closures</option>
+      <option [selected]="filter === 'hazard'" value="hazard">Hazard Escalations</option>
+      <option [selected]="filter === 'responder'" value="responder">Responder Status</option>
+      <option [selected]="filter === 'other'" value="other">Other</option>
+    </select>
+  </div>
+  <div class="notification-list">
+    <div *ngFor="let event of filteredEvents" class="notification-item" [class.read]="event.read">
+      <span class="timestamp">{{ event.timestamp | date:'shortTime' }}</span>
+      <span class="message">{{ event.message }}</span>
+  <button *ngIf="!event.read" (click)="onMarkAsRead(event.id)">Mark as read</button>
+    </div>
+    <div *ngIf="filteredEvents.length === 0" class="no-events">No events to display.</div>
+  </div>
+</div>
