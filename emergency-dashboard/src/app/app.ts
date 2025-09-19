@@ -483,6 +483,12 @@ export class App {
   
   onIncidentChange(incident: string) {
     this.selectedIncident = incident;
+    // Auto switch map mode based on incident naming convention
+    if (incident.toLowerCase().includes('flood')) {
+      this.mapMode = 'Flood';
+    } else if (incident.toLowerCase().includes('fire')) {
+      this.mapMode = 'Fire';
+    }
     this.priority = 'All'; // Reset priority filter on incident change
     this.updateMapVictimClusters();
     this.updateVictimClusters();

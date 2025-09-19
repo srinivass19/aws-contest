@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, AfterViewInit, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 // import * as L from 'leaflet';
 import { Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -51,7 +51,7 @@ export interface MapFacility {
   templateUrl: './central-map-panel.component.html',
   styleUrls: ['./central-map-panel.component.scss']
 })
-export class CentralMapPanelComponent implements AfterViewInit, OnChanges {
+export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDestroy {
   private L: typeof import('leaflet') | undefined;
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
   @Input() hazardZones: MapHazardZone[] = [];
@@ -72,10 +72,17 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges {
   }
 
   async ngAfterViewInit() {
+    // Guard: prevent double initialization if Angular re-attaches the view (e.g., conditional rendering / hydration edge cases)
+    if (this.map) {
+      return; // already initialized
+    }
     if (isPlatformBrowser(this.platformId)) {
       const L = await import('leaflet');
       this.L = L;
-      this.map = L.map('map', {
+      // Double-check target element exists to avoid runtime errors
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      this.map = L.map(mapEl, {
         center: [37.7749, -122.4194],
         zoom: 13,
         layers: [
@@ -87,6 +94,17 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges {
       this.overlays = L.layerGroup();
       this.overlays.addTo(this.map);
       this.renderLayers();
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up Leaflet map instance to free DOM handlers and allow re-init later without error
+    if (this.map) {
+      try {
+        this.map.remove();
+      } catch {}
+      this.map = undefined;
+      this.overlays = undefined;
     }
   }
 
@@ -102,17 +120,37 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges {
     this.overlays.clearLayers();
     // 🔴 Fire/Flood Zone Overlay
     for (const zone of this.hazardZones) {
-      const color = this.mapMode === 'Fire'
+      const isFlood = this.mapMode === 'Flood';
+      const color = !isFlood
         ? 'rgba(255, 0, 0, 0.55)'
         : 'rgba(33, 150, 243, 0.55)';
       for (const poly of zone.coordinates) {
-        L.polygon(poly, {
-          color,
-          fillColor: color,
-          fillOpacity: 0.35,
-          weight: 3,
-          dashArray: undefined
-        }).addTo(this.overlays);
+        // For flood incidents make outline slightly thicker and add dashed inner accent by layering
+        if (isFlood) {
+          // Base filled polygon
+          L.polygon(poly, {
+            color: 'rgba(33,150,243,0.9)',
+            fillColor: color,
+            fillOpacity: 0.32,
+            weight: 4,
+            dashArray: undefined
+          }).addTo(this.overlays);
+          // Subtle inner accent (dashed lighter stroke)
+            L.polygon(poly, {
+              color: 'rgba(144,202,249,0.9)',
+              fill: false,
+              weight: 2,
+              dashArray: '6 6'
+            }).addTo(this.overlays);
+        } else {
+          L.polygon(poly, {
+            color,
+            fillColor: color,
+            fillOpacity: 0.35,
+            weight: 3,
+            dashArray: undefined
+          }).addTo(this.overlays);
+        }
       }
     }
     // 🟡 Forecast Spread (animated polygon)
