@@ -75,6 +75,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   private readonly MOBILE_BREAKPOINT = 640;
   private userLocale: string = 'en-US';
   private hoverDelayMs = 140;
+  private victimDetailsCache: Map<string, any[]> = new Map();
 
   // Simple i18n dictionary (could later be externalized)
   private i18n: Record<string, string> = {
@@ -242,8 +243,26 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
           priority: cluster.priority,
           assigned: isAssigned,
           lat: cluster.lat,
-          lon: cluster.lon
+          lon: cluster.lon,
+          loadingVictims: true
         }));
+        let loaded = false;
+        m.on('tooltipopen', () => {
+          if (loaded) return;
+          loaded = true;
+          const victims = this.getOrGenerateVictimsForCluster(cluster.id, cluster.priority);
+          const tt = (m as any).getTooltip?.();
+          if (tt) {
+            tt.setContent(this.buildTooltipHTML('cluster', {
+              id: cluster.id,
+              priority: cluster.priority,
+              assigned: isAssigned,
+              lat: cluster.lat,
+              lon: cluster.lon,
+              victims
+            }));
+          }
+        });
       }
     }
     // 🚑 My Unit Position (first responder is "my unit")
@@ -346,6 +365,25 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   rows.push(this.row(this.i18n['priority'], data.priority));
   if (data.assigned) rows.push(this.row(this.i18n['assigned'], 'Yes'));
   rows.push(this.row(this.i18n['coordinates'], fmtCoords(data.lat, data.lon)));
+        if (data.loadingVictims) {
+          rows.push(`<div class="mt-row"><span class="mt-label">Victims:</span><span class="mt-value">Loading...</span></div>`);
+        } else if (Array.isArray(data.victims) && data.victims.length) {
+          const iconFor = (sev: string) => {
+            switch (sev) {
+              case 'critical': return '🔴';
+              case 'serious': return '🟠';
+              case 'stable': return '🟢';
+              default: return '⚪';
+            }
+          };
+          const victimLines = data.victims.map((v: any) => `<div class=\"mt-victim\" aria-label=\"Victim ${this.escape(v.id)} ${this.escape(v.severity)}\">
+              <span class=\"v-id\">${this.escape(v.id)}</span>
+              <span class=\"v-sev sev-${this.escape(v.severity)}\" title=\"${this.escape(v.severity)}\">${iconFor(v.severity)}</span>
+              <span class=\"v-need\">${this.escape(v.need)}</span>
+              <span class=\"v-status\">${this.escape(v.status)}</span>
+            </div>`).join('');
+          rows.push(`<div class=\"mt-row mt-victims-block\"><span class=\"mt-label\">Victims:</span><div class=\"mt-victims\">${victimLines}</div></div>`);
+        }
         break;
       case 'responder':
   title = data.myUnit ? `${this.i18n['myUnit']}` : this.i18n['responderUnit'];
@@ -480,5 +518,28 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       case 'Roadblock': return isFlood ? '🚧' : '🚧';
       default: return isFlood ? '❓' : '❓';
     }
+  }
+
+  // Lazy victim generation with deterministic variety based on cluster id hash
+  private getOrGenerateVictimsForCluster(clusterId: string, priority: string) {
+    if (this.victimDetailsCache.has(clusterId)) {
+      return this.victimDetailsCache.get(clusterId)!;
+    }
+    const baseCount = priority === 'Immediate' ? 5 : priority === 'High' ? 4 : priority === 'Medium' ? 3 : 2;
+    // pseudo-random but deterministic count augmentation
+    const hash = Array.from(clusterId).reduce((a, c) => a + c.charCodeAt(0), 0);
+    const extra = hash % 3; // 0..2
+    const total = baseCount + extra;
+    const severities: Array<'critical' | 'serious' | 'stable'> = ['critical', 'serious', 'stable'];
+    const needsPool = ['Medical', 'Evacuation', 'Water', 'Food', 'Stabilization'];
+    const statuses: Array<'awaiting' | 'treated' | 'evacuated'> = ['awaiting', 'treated', 'awaiting', 'evacuated'];
+    const victims = Array.from({ length: total }).map((_, i) => ({
+      id: `${clusterId}-V${i + 1}`,
+      need: needsPool[(hash + i) % needsPool.length],
+      severity: severities[(hash + i) % severities.length],
+      status: statuses[(hash + i) % statuses.length]
+    }));
+    this.victimDetailsCache.set(clusterId, victims);
+    return victims;
   }
 }
