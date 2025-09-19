@@ -1,15 +1,19 @@
 <div class="central-map-panel">
   <!-- Map container (OpenStreetMap/Mapbox via leaflet) -->
-  <div id="map" class="map-container"></div>
+  <div id="map" class="map-container" role="img" aria-label="Incident map showing hazard zones, forecast and responders"></div>
 
   <!-- Timestamp slider for hazard prediction animation -->
   <div class="timestamp-slider" *ngIf="hazardPredictions.length > 0">
-    <label>Prediction Time:</label>
+    <label aria-label="Prediction time slider">Prediction Time:</label>
     <input type="range"
            [min]="0"
            [max]="hazardPredictions.length - 1"
            [value]="getPredictionIndex()"
-           (input)="predictionTimestampChange.emit(hazardPredictions[$any($event.target).value].timestamp)" />
+      (input)="predictionTimestampChange.emit(hazardPredictions[$any($event.target).value].timestamp)"
+      [attr.aria-valuemin]="0"
+      [attr.aria-valuemax]="hazardPredictions.length - 1"
+      [attr.aria-valuenow]="getPredictionIndex()"
+      aria-label="Select forecast prediction index" />
     <span>{{ predictionTimestamp }}</span>
   </div>
 </div>

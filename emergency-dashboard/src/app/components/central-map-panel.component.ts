@@ -66,6 +66,32 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
 
   private map?: any;
   private overlays: any;
+  // Forecast animation + legend support
+  private forecastPulseTimer: any;
+  private forecastPulseState: number = 0;
+  private forecastLayerRefs: any[] = [];
+  private legendControl: any;
+  private enableTooltips: boolean = true; // disabled on small/mobile screens
+  private readonly MOBILE_BREAKPOINT = 640;
+  private userLocale: string = 'en-US';
+  private hoverDelayMs = 140;
+
+  // Simple i18n dictionary (could later be externalized)
+  private i18n: Record<string, string> = {
+    zoneRisk: 'Risk Score',
+    forecastAt: 'Forecast Spread @',
+    victimCluster: 'Victim Cluster',
+    priority: 'Priority',
+    assigned: 'Assigned',
+    responderUnit: 'Responder Unit',
+    myUnit: 'My Unit',
+    route: 'Route',
+    suggestedRoute: 'Suggested Route',
+    alternateRoute: 'Alternate Route',
+    routeEnd: 'Route Terminus',
+    facility: 'Facility',
+    coordinates: 'Approx. Coords'
+  };
 
   getPredictionIndex(): number {
     return this.hazardPredictions.findIndex(p => p.timestamp === this.predictionTimestamp);
@@ -93,6 +119,13 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       });
       this.overlays = L.layerGroup();
       this.overlays.addTo(this.map);
+      // Decide tooltip enablement (disable on narrow/mobile screens)
+      try {
+        if (typeof window !== 'undefined') {
+          this.enableTooltips = window.innerWidth >= this.MOBILE_BREAKPOINT;
+          this.userLocale = navigator.language || this.userLocale;
+        }
+      } catch {}
       this.renderLayers();
     }
   }
@@ -106,6 +139,10 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       this.map = undefined;
       this.overlays = undefined;
     }
+    if (this.forecastPulseTimer) {
+      clearInterval(this.forecastPulseTimer);
+      this.forecastPulseTimer = undefined;
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -118,6 +155,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     const L = this.L;
     if (!L) return;
     this.overlays.clearLayers();
+    this.forecastLayerRefs = [];
     // 🔴 Fire/Flood Zone Overlay
     for (const zone of this.hazardZones) {
       const isFlood = this.mapMode === 'Flood';
@@ -128,13 +166,19 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         // For flood incidents make outline slightly thicker and add dashed inner accent by layering
         if (isFlood) {
           // Base filled polygon
-          L.polygon(poly, {
+          const activeLayer = L.polygon(poly, {
             color: 'rgba(33,150,243,0.9)',
             fillColor: color,
             fillOpacity: 0.32,
             weight: 4,
             dashArray: undefined
           }).addTo(this.overlays);
+          if (this.enableTooltips) {
+            this.attachTooltipWithDebounce(activeLayer, this.buildTooltipHTML('zone', {
+              title: 'Active Flood Zone',
+              risk: zone.riskScore
+            }));
+          }
           // Subtle inner accent (dashed lighter stroke)
             L.polygon(poly, {
               color: 'rgba(144,202,249,0.9)',
@@ -143,13 +187,19 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
               dashArray: '6 6'
             }).addTo(this.overlays);
         } else {
-          L.polygon(poly, {
+          const fireLayer = L.polygon(poly, {
             color,
             fillColor: color,
             fillOpacity: 0.35,
             weight: 3,
             dashArray: undefined
           }).addTo(this.overlays);
+          if (this.enableTooltips) {
+            this.attachTooltipWithDebounce(fireLayer, this.buildTooltipHTML('zone', {
+              title: 'Active Fire Zone',
+              risk: zone.riskScore
+            }));
+          }
         }
       }
     }
@@ -159,13 +209,20 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       if (pred) {
         const predColor = this.mapMode === 'Fire' ? 'rgba(255, 193, 7, 0.7)' : 'rgba(33, 150, 243, 0.4)';
         for (const poly of pred.coordinates) {
-          L.polygon(poly, {
+          const layer = L.polygon(poly, {
             color: predColor,
             fillColor: predColor,
             fillOpacity: 0.22,
             dashArray: '8',
             weight: 2
           }).addTo(this.overlays);
+          if (this.enableTooltips) {
+            this.attachTooltipWithDebounce(layer, this.buildTooltipHTML('forecast', {
+              timestamp: this.predictionTimestamp,
+              title: 'Forecast Spread'
+            }));
+          }
+          this.forecastLayerRefs.push(layer);
         }
       }
     }
@@ -178,17 +235,37 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         className: `victim-icon ${cluster.priority.toLowerCase()}${isAssigned ? ' assigned' : ''}`,
         html: `<span title="${cluster.priority}">${isAssigned ? '👤' : '🧑‍🤝‍🧑'}</span>`
       });
-      L.marker([cluster.lat, cluster.lon], { icon }).addTo(this.overlays);
+      const m = L.marker([cluster.lat, cluster.lon], { icon }).addTo(this.overlays);
+      if (this.enableTooltips) {
+        this.attachTooltipWithDebounce(m, this.buildTooltipHTML('cluster', {
+          id: cluster.id,
+          priority: cluster.priority,
+          assigned: isAssigned,
+          lat: cluster.lat,
+          lon: cluster.lon
+        }));
+      }
     }
     // 🚑 My Unit Position (first responder is "my unit")
     let myUnitId = this.responders.length > 0 ? this.responders[0].id : null;
     for (const responder of this.responders) {
       const isMyUnit = responder.id === myUnitId;
+      const baseIcon = this.responderIconHtml(responder.unitType);
+      const myUnitIcon = this.mapMode === 'Flood'
+        ? `💧${baseIcon}<span style="font-size:1.1em;">★</span>`
+        : `${baseIcon}<span style="font-size:1.1em;">★</span>`;
       const icon = L.divIcon({
         className: `responder-icon ${responder.unitType.toLowerCase()}${isMyUnit ? ' my-unit' : ''}`,
-        html: isMyUnit ? '🚑<span style="font-size:1.2em;">★</span>' : this.responderIconHtml(responder.unitType)
+        html: isMyUnit ? myUnitIcon : baseIcon
       });
-      L.marker([responder.lat, responder.lon], { icon }).addTo(this.overlays);
+      const rm = L.marker([responder.lat, responder.lon], { icon }).addTo(this.overlays);
+      if (this.enableTooltips) {
+        this.attachTooltipWithDebounce(rm, this.buildTooltipHTML('responder', {
+          unitType: responder.unitType,
+          myUnit: isMyUnit,
+          id: responder.id
+        }));
+      }
     }
     // ⬆ Suggested Route + ⬅ Alternate (with arrowheads)
     for (const route of this.routes) {
@@ -200,6 +277,11 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         lineCap: 'round',
         lineJoin: 'round',
       }).addTo(this.overlays);
+      if (this.enableTooltips) {
+        this.attachTooltipWithDebounce(polyline, this.buildTooltipHTML('route', {
+          type: route.type
+        }));
+      }
       // Add arrowhead marker at the end of the route
       const last = route.coordinates[route.coordinates.length - 1];
       const icon = L.divIcon({
@@ -207,7 +289,10 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         iconSize: [24, 24],
         html: route.type === 'suggested' ? '<span style="font-size:1.6em;color:#388e3c;">⬆</span>' : '<span style="font-size:1.4em;color:#ff9800;">⬅</span>'
       });
-      L.marker(last, { icon, interactive: false }).addTo(this.overlays);
+      const term = L.marker(last, { icon, interactive: false }).addTo(this.overlays);
+      if (this.enableTooltips) {
+        this.attachTooltipWithDebounce(term, this.buildTooltipHTML('routeEnd', { }));
+      }
     }
     // 🏥 Nearest Hospital / 🛟 Safe Zone
     for (const facility of this.facilities) {
@@ -215,7 +300,166 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         className: `facility-icon ${facility.type.toLowerCase()}`,
         html: this.facilityIconHtml(facility.type)
       });
-      L.marker([facility.lat, facility.lon], { icon }).addTo(this.overlays);
+      const fm = L.marker([facility.lat, facility.lon], { icon }).addTo(this.overlays);
+      if (this.enableTooltips) {
+        this.attachTooltipWithDebounce(fm, this.buildTooltipHTML('facility', {
+          type: facility.type,
+          id: facility.id
+        }));
+      }
+    }
+    // Start/refresh forecast pulse if Flood mode
+    this.startForecastPulseIfNeeded();
+    // Add legend UI
+    this.addLegendControl(L);
+  }
+
+  /** Build unified HTML tooltip snippet */
+  private buildTooltipHTML(kind: string, data: any): string {
+    const fmtNumber = (v: number, digits: number = 2) =>
+      typeof v === 'number' && !isNaN(v) ? v.toLocaleString(this.userLocale, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '';
+    const fmtTime = (ts: number) => {
+      try {
+        return new Intl.DateTimeFormat(this.userLocale, { hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
+      } catch { return ''; }
+    };
+    const fmtCoords = (lat?: number, lon?: number) => {
+      if (typeof lat !== 'number' || typeof lon !== 'number') return '';
+      return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    };
+
+    let title = '';
+    const rows: string[] = [];
+
+    switch (kind) {
+      case 'zone':
+        title = data.title || 'Active Zone';
+  rows.push(this.row(this.i18n['zoneRisk'], fmtNumber(data.risk)));
+        break;
+      case 'forecast':
+        title = data.title || 'Forecast';
+  rows.push(this.row(this.i18n['forecastAt'], fmtTime(data.timestamp)));
+        break;
+      case 'cluster':
+  title = this.i18n['victimCluster'];
+        if (data.id) rows.push(this.row('ID', data.id));
+  rows.push(this.row(this.i18n['priority'], data.priority));
+  if (data.assigned) rows.push(this.row(this.i18n['assigned'], 'Yes'));
+  rows.push(this.row(this.i18n['coordinates'], fmtCoords(data.lat, data.lon)));
+        break;
+      case 'responder':
+  title = data.myUnit ? `${this.i18n['myUnit']}` : this.i18n['responderUnit'];
+        if (data.unitType) rows.push(this.row('Type', data.unitType));
+        if (data.id) rows.push(this.row('ID', data.id));
+        break;
+      case 'route':
+  title = data.type === 'suggested' ? this.i18n['suggestedRoute'] : this.i18n['alternateRoute'];
+        break;
+      case 'routeEnd':
+  title = this.i18n['routeEnd'];
+        break;
+      case 'facility':
+  title = this.i18n['facility'];
+        if (data.type) rows.push(this.row('Type', data.type));
+        if (data.id) rows.push(this.row('ID', data.id));
+        break;
+      default:
+        title = '';
+    }
+
+    return `\n    <div class="map-tooltip">\n      ${title ? `<div class=\"mt-title\">${this.escape(title)}</div>` : ''}\n      ${rows.join('')}\n    </div>`;
+  }
+
+  private row(label: string, value: any): string {
+    if (value === undefined || value === '') return '';
+    return `<div class=\"mt-row\"><span class=\"mt-label\">${this.escape(label)}:</span><span class=\"mt-value\">${this.escape(String(value))}</span></div>`;
+  }
+
+  private escape(v: string): string {
+    return v.replace(/[&<>"]+/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s] as string));
+  }
+
+  /** Attach tooltip with manual debounced open/close to reduce clutter */
+  private attachTooltipWithDebounce(layer: any, html: string) {
+    if (!layer || !layer.bindTooltip) return;
+    layer.bindTooltip(html, { sticky: true, direction: 'top', opacity: 0.95, className: 'unified-leaflet-tooltip' });
+    let timer: any;
+    layer.on('mouseover', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        try { layer.openTooltip(); } catch {}
+      }, this.hoverDelayMs);
+    });
+    layer.on('mouseout', () => {
+      if (timer) clearTimeout(timer);
+      try { layer.closeTooltip(); } catch {}
+    });
+    // For touch devices we could open on click (if enabledTooltips true)
+    layer.on('click', () => {
+      if (!this.enableTooltips) return;
+      try { layer.openTooltip(); } catch {}
+    });
+  }
+
+  // Legend control
+  private addLegendControl(L: any) {
+    if (!this.map) return;
+    if (this.legendControl) {
+      try { this.legendControl.remove(); } catch {}
+      this.legendControl = undefined;
+    }
+    this.legendControl = L.control({ position: 'topright' });
+    const mode = this.mapMode;
+    this.legendControl.onAdd = () => {
+      const div = L.DomUtil.create('div', 'map-legend');
+      div.setAttribute('role', 'group');
+      div.setAttribute('aria-label', 'Map legend');
+      div.innerHTML = `
+        <div class="legend-title">${mode} Layers</div>
+        <div class="legend-row"><span class="legend-swatch active-zone ${mode.toLowerCase()}"></span><span class="legend-label">Active ${mode} Zone</span></div>
+        <div class="legend-row"><span class="legend-swatch forecast ${mode.toLowerCase()}"></span><span class="legend-label">Forecast Spread</span></div>
+        <div class="legend-row"><span class="legend-icon">🧑‍🤝‍🧑</span><span class="legend-label">Victim Cluster</span></div>
+        <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '💧🚑' : '🚑'}</span><span class="legend-label">Responder Unit</span></div>
+  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '💧🏥' : '🏥'}</span><span class="legend-label">Hospital</span></div>
+  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '💧🛟' : '🛟'}</span><span class="legend-label">Safe Zone</span></div>
+      `;
+      return div;
+    };
+    this.legendControl.addTo(this.map);
+  }
+
+  // Forecast pulse animation (Flood only)
+  private startForecastPulseIfNeeded() {
+    if (this.forecastPulseTimer) {
+      clearInterval(this.forecastPulseTimer);
+      this.forecastPulseTimer = undefined;
+    }
+    if (this.mapMode !== 'Flood' || this.forecastLayerRefs.length === 0) return;
+    this.forecastPulseTimer = setInterval(() => {
+      this.forecastPulseState = (this.forecastPulseState + 1) % 40; // cycle
+      const phase = Math.abs(20 - this.forecastPulseState) / 20; // 0..1..0
+      const fillOpacity = 0.18 + phase * 0.14; // 0.18 -> 0.32 -> 0.18
+      for (const layer of this.forecastLayerRefs) {
+        try { layer.setStyle({ fillOpacity }); } catch {}
+      }
+    }, 140);
+  }
+
+  private responderIconHtml(type: string): string {
+    // Flood mode: prefix with droplet to reinforce context
+    if (this.mapMode === 'Flood') {
+      switch (type) {
+        case 'Ambulance': return '💧🚑';
+        case 'Fire': return '💧🚒';
+        case 'Police': return '💧🚓';
+        default: return '💧🚨';
+      }
+    }
+    switch (type) {
+      case 'Ambulance': return '🚑';
+      case 'Fire': return '🚒';
+      case 'Police': return '🚓';
+      default: return '🚨';
     }
   }
 
@@ -226,23 +470,15 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     return `rgb(${r},${g},64)`;
   }
 
-  private responderIconHtml(type: string): string {
-    switch (type) {
-      case 'Ambulance': return '🚑';
-      case 'Fire': return '🚒';
-      case 'Police': return '🚓';
-      default: return '🚨';
-    }
-  }
-
   private facilityIconHtml(type: string): string {
+    const isFlood = this.mapMode === 'Flood';
     switch (type) {
-      case 'Hospital': return '🏥';
-      case 'Shelter': return '🏚️';
-      case 'SafeZone': return '🛟'; // lifebuoy for safe zone
-      case 'RescueZone': return '🛟';
-      case 'Roadblock': return '🚧';
-      default: return '❓';
+      case 'Hospital': return isFlood ? '🏥' : '🏥';
+      case 'Shelter': return isFlood ? '🏚️' : '🏚️';
+      case 'SafeZone': return isFlood ? '🛟' : '🛟';
+      case 'RescueZone': return isFlood ? '🛟' : '🛟';
+      case 'Roadblock': return isFlood ? '🚧' : '🚧';
+      default: return isFlood ? '❓' : '❓';
     }
   }
 }

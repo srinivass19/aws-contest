@@ -23,3 +23,37 @@
 }
 /* You can add global styles to this file, and also import other style files */
 @import 'leaflet/dist/leaflet.css';
+
+/* Unified Leaflet tooltip styling */
+.unified-leaflet-tooltip {
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	padding: 0;
+}
+.unified-leaflet-tooltip .map-tooltip {
+	background: rgba(30,32,36,0.92);
+	color: #f5f7fa;
+	padding: 6px 8px 6px 8px;
+	border-radius: 8px;
+	font-size: 12px;
+	line-height: 1.15;
+	box-shadow: 0 4px 14px -2px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.4);
+	max-width: 220px;
+}
+.unified-leaflet-tooltip .mt-title {
+	font-weight: 600;
+	font-size: 11px;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	margin-bottom: 4px;
+	color: #90caf9;
+}
+.unified-leaflet-tooltip .mt-row { display: flex; gap: 4px; }
+.unified-leaflet-tooltip .mt-label { font-weight: 600; color: #e3e8ef; }
+.unified-leaflet-tooltip .mt-value { font-weight: 400; color: #fafcff; }
+.unified-leaflet-tooltip .mt-row + .mt-row { margin-top: 2px; }
+
+@media (max-width: 640px) {
+	.unified-leaflet-tooltip { display: none !important; }
+}

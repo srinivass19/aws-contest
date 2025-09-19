@@ -32,6 +32,8 @@ export class App {
   incidents: string[];
   selectedIncident: string;
   mapMode: 'Fire' | 'Flood' = 'Fire';
+  // Tracks if user manually switched map mode (prevents auto incident-based switching)
+  private mapModeManualOverride: boolean = false;
   forecastHour: number = 0;
   priority: string = 'All';
 
@@ -478,16 +480,19 @@ export class App {
   }
 
   onMapModeChange(mode: 'Fire' | 'Flood') {
+    this.mapModeManualOverride = true; // user explicitly changed mode
     this.mapMode = mode;
   }
   
   onIncidentChange(incident: string) {
     this.selectedIncident = incident;
-    // Auto switch map mode based on incident naming convention
-    if (incident.toLowerCase().includes('flood')) {
-      this.mapMode = 'Flood';
-    } else if (incident.toLowerCase().includes('fire')) {
-      this.mapMode = 'Fire';
+    // Auto switch map mode based on incident naming convention unless user manually overrode
+    if (!this.mapModeManualOverride) {
+      if (incident.toLowerCase().includes('flood')) {
+        this.mapMode = 'Flood';
+      } else if (incident.toLowerCase().includes('fire')) {
+        this.mapMode = 'Fire';
+      }
     }
     this.priority = 'All'; // Reset priority filter on incident change
     this.updateMapVictimClusters();
@@ -495,6 +500,11 @@ export class App {
     this.updateIncidentMapData();
     // Recompute forecast based on current slider hour
     this.recomputeForecastForIncident(incident);
+  }
+
+  // Allow resetting automatic behavior (could be triggered by future UI control)
+  resetMapModeAutoBehavior() {
+    this.mapModeManualOverride = false;
   }
 
   updateIncidentMapData() {
