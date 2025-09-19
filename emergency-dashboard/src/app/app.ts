@@ -137,6 +137,12 @@ export class App {
     ]
   };
 
+  // Base forecast polygons captured at construction for scaling
+  private baseForecastPolygons: { [incident: string]: [number, number][][] } = {};
+
+  // Dynamically generated facilities relative to hazard zone centroid
+  incidentFacilities: { [incident: string]: MapFacility[] } = {}; // will be filled in constructor
+
   incidentResponders: { [incident: string]: MapResponder[] } = {
     'Fire - Downtown Warehouse': [ { id: 'R1', lat: 37.7822, lon: -122.4102, unitType: 'Ambulance' } ],
     'Flood - Riverside District': [ { id: 'R2', lat: 37.7902, lon: -122.4203, unitType: 'Ambulance' } ],
@@ -148,48 +154,6 @@ export class App {
     'Flood - West End': [ { id: 'R8', lat: 37.7104, lon: -122.4803, unitType: 'Ambulance' } ]
   };
   incidentRoutes: { [incident: string]: MapRoute[] } = {};
-  incidentFacilities: { [incident: string]: MapFacility[] } = {
-    'Fire - Downtown Warehouse': [
-      // Place Hospital just south of fire zone
-      { id: 'F1', lat: 37.778, lon: -122.410, type: 'Hospital', name: 'General Hospital' },
-      // Place SafeZone just north of fire zone
-      { id: 'F2', lat: 37.786, lon: -122.410, type: 'SafeZone', name: 'Safe Zone Alpha' }
-    ],
-    'Flood - Riverside District': [
-      { id: 'F1', lat: 37.791, lon: -122.419, type: 'Hospital', name: 'Riverside Hospital' },
-      { id: 'F2', lat: 37.789, lon: -122.421, type: 'SafeZone', name: 'Safe Zone Beta' }
-    ],
-    'Fire - Industrial Park': [
-      // Place Hospital just south of fire zone
-      { id: 'F1', lat: 37.757, lon: -122.430, type: 'Hospital', name: 'Industrial Hospital' },
-      // Place SafeZone just north of fire zone
-      { id: 'F2', lat: 37.765, lon: -122.430, type: 'SafeZone', name: 'Safe Zone Gamma' }
-    ],
-    'Flood - East Valley': [
-      { id: 'F1', lat: 37.771, lon: -122.439, type: 'Hospital', name: 'Valley Hospital' },
-      { id: 'F2', lat: 37.769, lon: -122.441, type: 'SafeZone', name: 'Safe Zone Delta' }
-    ],
-    'Fire - North Hills': [
-      // Place Hospital just south of fire zone
-      { id: 'F1', lat: 37.747, lon: -122.450, type: 'Hospital', name: 'North Hills Hospital' },
-      // Place SafeZone just north of fire zone
-      { id: 'F2', lat: 37.755, lon: -122.450, type: 'SafeZone', name: 'Safe Zone Epsilon' }
-    ],
-    'Flood - South Meadows': [
-      { id: 'F1', lat: 37.731, lon: -122.459, type: 'Hospital', name: 'South Meadows Hospital' },
-      { id: 'F2', lat: 37.729, lon: -122.461, type: 'SafeZone', name: 'Safe Zone Zeta' }
-    ],
-    'Fire - City Center': [
-      // Place Hospital just south of fire zone
-      { id: 'F1', lat: 37.717, lon: -122.470, type: 'Hospital', name: 'City Center Hospital' },
-      // Place SafeZone just north of fire zone
-      { id: 'F2', lat: 37.725, lon: -122.470, type: 'SafeZone', name: 'Safe Zone Eta' }
-    ],
-    'Flood - West End': [
-      { id: 'F1', lat: 37.711, lon: -122.479, type: 'Hospital', name: 'West End Hospital' },
-      { id: 'F2', lat: 37.709, lon: -122.481, type: 'SafeZone', name: 'Safe Zone Theta' }
-    ]
-  };
   floodHazardZones: MapHazardZone[] = [
     { id: 'flood-hz1', coordinates: [[[37.772, -122.425], [37.773, -122.425], [37.773, -122.423], [37.772, -122.423]]], riskScore: 0.7 }
   ];
@@ -332,6 +296,8 @@ export class App {
   mapVictimClusters: MapVictimCluster[] = [];
   predictionTimestamp: string = '2025-09-18T17:00:00Z';
   clusters: VictimCluster[] = [];
+  // Loading state for victim list
+  loadingVictimClusters: boolean = false;
 
   constructor(private cdr: ChangeDetectorRef, private mapboxService: MapboxService) {
     this.incidents = [
@@ -345,11 +311,99 @@ export class App {
       'Flood - West End'
     ];
     this.selectedIncident = this.incidents.length > 0 ? this.incidents[0] : '';
+
+    // Capture base forecast polygons (deep copy)
+    for (const incident of Object.keys(this.incidentHazardPredictions)) {
+      const pred = this.incidentHazardPredictions[incident]?.[0];
+      if (pred) {
+        this.baseForecastPolygons[incident] = pred.coordinates.map(poly => poly.map(([la, lo]) => [la, lo]) as [number, number][]);
+      }
+    }
+
+    // Derive base forecast if missing using hazard zone scaled 15%
+    for (const incident of Object.keys(this.incidentHazardZones)) {
+      if (!this.baseForecastPolygons[incident]) {
+        const hzPoly = this.incidentHazardZones[incident]?.[0]?.coordinates?.[0];
+        if (hzPoly) {
+          const derived = this.scalePolygon(hzPoly, 1.15);
+            this.baseForecastPolygons[incident] = [derived];
+            this.incidentHazardPredictions[incident] = [{
+              id: `auto-pred-${incident.slice(0,6)}`,
+              coordinates: [derived],
+              timestamp: '2025-09-18T17:00:00Z'
+            }];
+        }
+      }
+    }
+
+    // Build dynamic facilities relative to hazard zone centroid
+    this.generateFacilities();
     this.priority = 'All';
     this.updateMapVictimClusters();
     this.updateVictimClusters();
     this.updateIncidentMapData();
     this.updateAllIncidentRoutes();
+  }
+
+  // Compute centroid of polygon
+  private polygonCentroid(poly: [number, number][]): [number, number] {
+    const n = poly.length;
+    let lat = 0, lon = 0;
+    for (const [la, lo] of poly) { lat += la; lon += lo; }
+    return [lat / n, lon / n];
+  }
+
+  private generateFacilities() {
+    const result: { [incident: string]: MapFacility[] } = {};
+    for (const incident of Object.keys(this.incidentHazardZones)) {
+      const hzPoly = this.incidentHazardZones[incident]?.[0]?.coordinates?.[0];
+      if (!hzPoly) continue;
+      const [cLat, cLon] = this.polygonCentroid(hzPoly);
+      const offsetKm = 0.5; // 0.5 km
+      const dLat = offsetKm / 111; // degrees
+      // Place Hospital north, SafeZone south
+      result[incident] = [
+        { id: `F1-${incident}`, lat: cLat + dLat, lon: cLon, type: 'Hospital', name: 'Hospital' },
+        { id: `F2-${incident}`, lat: cLat - dLat, lon: cLon, type: 'SafeZone', name: 'Safe Zone' }
+      ];
+    }
+    this.incidentFacilities = result;
+  }
+
+  private scalePolygon(poly: [number, number][], factor: number): [number, number][] {
+    if (!poly.length) return poly;
+    const [cLat, cLon] = this.polygonCentroid(poly);
+    return poly.map(([la, lo]) => [cLat + (la - cLat) * factor, cLon + (lo - cLon) * factor]) as [number, number][];
+  }
+
+  private buildForecastTimestamp(hour: number): string {
+    const base = new Date('2025-09-18T17:00:00Z');
+    base.setHours(base.getHours() + hour);
+    return base.toISOString();
+  }
+
+  private recomputeForecastForIncident(incident: string) {
+    const base = this.baseForecastPolygons[incident];
+    if (!base) return;
+    const factor = 1 + (this.forecastHour * 0.20); // 20% expansion per hour
+    const scaled = base.map(poly => this.scalePolygon(poly, factor));
+    const ts = this.buildForecastTimestamp(this.forecastHour);
+    // Replace with a new object & array reference (immutable update) so OnChanges fires downstream
+    const newPrediction: MapHazardPrediction = { id: `pred-${incident.slice(0,6)}`, coordinates: scaled, timestamp: ts };
+    // Clone container object to avoid mutating same reference other components might hold
+    this.incidentHazardPredictions = { ...this.incidentHazardPredictions, [incident]: [newPrediction] };
+    if (incident === this.selectedIncident) {
+      this.predictionTimestamp = ts;
+      // Also refresh exported prediction array reference consumed by map panel
+      this._hazardPredictions = this.incidentHazardPredictions[this.selectedIncident];
+      this.updateIncidentMapData();
+      this.cdr.markForCheck();
+    }
+  }
+
+  onForecastHourChange(hour: number) {
+    this.forecastHour = Number(hour);
+    this.recomputeForecastForIncident(this.selectedIncident);
   }
 
   // For each incident, fetch Mapbox road-based routes and update incidentRoutes
@@ -433,6 +487,8 @@ export class App {
     this.updateMapVictimClusters();
     this.updateVictimClusters();
     this.updateIncidentMapData();
+    // Recompute forecast based on current slider hour
+    this.recomputeForecastForIncident(incident);
   }
 
   updateIncidentMapData() {
@@ -468,11 +524,17 @@ export class App {
   }
 
   updateMapVictimClusters() {
-  // Always show all clusters for the selected incident on the map
-  this.mapVictimClusters = this.allMapVictimClusters[this.selectedIncident] || [];
+  // Simulate async load (could be replaced with real service later)
+  this.loadingVictimClusters = true;
+  setTimeout(() => {
+    this.mapVictimClusters = this.allMapVictimClusters[this.selectedIncident] || [];
+    // Also rebuild clusters list for UI
+    this.updateVictimClusters();
+    this.loadingVictimClusters = false;
+    this.cdr.markForCheck();
+  }, 400);
   }
   noop() {}
   onAssignResponder(id: string) { /* TODO: implement */ }
   onAddNote(id: string) { /* TODO: implement */ }
 }
-

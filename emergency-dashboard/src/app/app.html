@@ -7,13 +7,14 @@
 			[priority]="priority"
 			(incidentChange)="onIncidentChange($event)"
 			(mapModeChange)="onMapModeChange($event)"
-			(forecastHourChange)="noop()"
+			(forecastHourChange)="onForecastHourChange($event)"
 			(priorityChange)="priority = $event"
 		/>
 	<div class="dashboard-main">
 			<app-victim-prioritization-list
 				[clusters]="clusters"
 				[priority]="priority"
+				[loading]="loadingVictimClusters"
 				(assignResponder)="onAssignResponder($event)"
 				(addNote)="onAddNote($event)"
 			/>

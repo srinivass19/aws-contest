@@ -1,6 +1,21 @@
 <div class="victim-list-panel">
   <h2>Victim Prioritization</h2>
-  <ul>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-wrapper">
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+    <ul class="skeleton-list">
+      <li *ngFor="let sk of [1,2,3,4,5]" class="skeleton-item">
+        <div class="sk-line w40"></div>
+        <div class="sk-line w70"></div>
+        <div class="sk-line w55"></div>
+        <div class="sk-line w60"></div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Loaded List -->
+  <ul *ngIf="!loading">
     <li *ngFor="let cluster of filteredClusters; trackBy: trackById" class="victim-cluster">
       <div class="priority-label {{ getPriorityLabel(cluster) | lowercase }}">
         {{ getPriorityLabel(cluster) }}

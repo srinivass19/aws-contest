@@ -45,8 +45,8 @@ export class HeaderToolbarComponent {
   onMapModeChange(mode: 'Fire' | 'Flood') {
     this.mapModeChange.emit(mode);
   }
-  onForecastChange(event: any) {
-    this.forecastHourChange.emit(event.target.value);
+  onForecastChange(value: number) {
+    this.forecastHourChange.emit(Number(value));
   }
   onPriorityChange(priority: string) {
     this.priorityChange.emit(priority);

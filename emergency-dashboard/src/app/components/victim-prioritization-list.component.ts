@@ -21,6 +21,7 @@ export interface VictimCluster {
 export class VictimPrioritizationListComponent {
   @Input() clusters: VictimCluster[] = [];
   @Input() priority: string = '';
+  @Input() loading: boolean = false;
   @Output() assignResponder = new EventEmitter<string>();
   @Output() addNote = new EventEmitter<string>();
 
