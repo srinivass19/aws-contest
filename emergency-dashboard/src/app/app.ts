@@ -1,5 +1,6 @@
 import { Component, signal, ChangeDetectorRef } from '@angular/core';
 import { MapboxService } from './services/mapbox.service';
+import { ApiService } from './services/api.service';
 import { FormsModule } from '@angular/forms';
 import { HeaderToolbarComponent } from './components/header-toolbar.component';
 import { VictimPrioritizationListComponent, VictimCluster } from './components/victim-prioritization-list.component';
@@ -333,7 +334,7 @@ export class App {
   predictionTimestamp: string = '2025-09-18T17:00:00Z';
   clusters: VictimCluster[] = [];
 
-  constructor(private cdr: ChangeDetectorRef, private mapboxService: MapboxService) {
+  constructor(private cdr: ChangeDetectorRef, private mapboxService: MapboxService, private api: ApiService) {
     this.incidents = [
       'Fire - Downtown Warehouse',
       'Flood - Riverside District',
@@ -346,10 +347,25 @@ export class App {
     ];
     this.selectedIncident = this.incidents.length > 0 ? this.incidents[0] : '';
     this.priority = 'All';
+    this.initFromApi();
+  }
+
+  async initFromApi() {
+    // Hazards
+    const hazardType = this.selectedIncident.startsWith('Fire') ? 'fire' : 'flood';
+    this.incidentHazardZones[this.selectedIncident] = await this.api.getHazards(hazardType) || [];
+    this.incidentHazardPredictions[this.selectedIncident] = await this.api.getHazardForecast() || [];
+    // Victims
+    const victims = await this.api.getVictims(this.selectedIncident);
+    this.allMapVictimClusters[this.selectedIncident] = (victims && victims.length) ? victims : this.allMapVictimClusters[this.selectedIncident];
+    // Responders
+    this.incidentResponders[this.selectedIncident] = await this.api.getResponders(this.selectedIncident) || [];
+    // Routes (dummy: keep using Mapbox for now)
+    await this.updateAllIncidentRoutes();
+    // Update overlays
     this.updateMapVictimClusters();
     this.updateVictimClusters();
     this.updateIncidentMapData();
-    this.updateAllIncidentRoutes();
   }
 
   // For each incident, fetch Mapbox road-based routes and update incidentRoutes
@@ -427,12 +443,10 @@ export class App {
     this.mapMode = mode;
   }
   
-  onIncidentChange(incident: string) {
+  async onIncidentChange(incident: string) {
     this.selectedIncident = incident;
     this.priority = 'All'; // Reset priority filter on incident change
-    this.updateMapVictimClusters();
-    this.updateVictimClusters();
-    this.updateIncidentMapData();
+    await this.initFromApi();
   }
 
   updateIncidentMapData() {
@@ -471,8 +485,7 @@ export class App {
   // Always show all clusters for the selected incident on the map
   this.mapVictimClusters = this.allMapVictimClusters[this.selectedIncident] || [];
   }
-  noop() {}
-  onAssignResponder(id: string) { /* TODO: implement */ }
-  onAddNote(id: string) { /* TODO: implement */ }
+
 }
+
 
