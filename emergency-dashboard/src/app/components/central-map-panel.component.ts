@@ -3,6 +3,8 @@ import { Component, Input, Output, EventEmitter, AfterViewInit, OnChanges, Simpl
 import { Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
+import { VictimFlashService, VictimFlashRequest } from '../services/../services/victim-flash.service';
+import { Subscription } from 'rxjs';
 
 export interface MapHazardZone {
   id: string;
@@ -53,16 +55,28 @@ export interface MapFacility {
 })
 export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDestroy {
   private L: typeof import('leaflet') | undefined;
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  constructor(@Inject(PLATFORM_ID) private platformId: Object, private victimFlashService: VictimFlashService) {}
   @Input() hazardZones: MapHazardZone[] = [];
   @Input() hazardPredictions: MapHazardPrediction[] = [];
   @Input() victimClusters: MapVictimCluster[] = [];
+  // List of victim cluster IDs that should flash/pulse for easy tracking
+  @Input() flashingVictimIds: string[] = [];
+  // Auto flash newly added clusters for N ms
+  @Input() autoFlashNewVictims: boolean = true;
+  @Input() autoFlashDurationMs: number = 10000; // 10s default
+  // Use priority-based colored flashing variants
+  @Input() priorityFlashColors: boolean = true;
+  // Automatically focus map on service-issued flash requests if request.focus not explicitly set
+  @Input() autoFocusOnServiceFlash: boolean = true;
   @Input() responders: MapResponder[] = [];
   @Input() routes: MapRoute[] = [];
   @Input() facilities: MapFacility[] = [];
   @Input() predictionTimestamp: string = '';
   @Input() mapMode: 'Fire' | 'Flood' = 'Fire';
   @Output() predictionTimestampChange = new EventEmitter<string>();
+  // Lifecycle events for flashing (auto/service). External (input-bound) flashes are not emitted.
+  @Output() victimFlashStarted = new EventEmitter<{ id: string; source: 'auto' | 'service' }>();
+  @Output() victimFlashEnded = new EventEmitter<{ id: string; source: 'auto' | 'service' }>();
 
   private map?: any;
   private overlays: any;
@@ -70,12 +84,23 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   private forecastPulseTimer: any;
   private forecastPulseState: number = 0;
   private forecastLayerRefs: any[] = [];
+  private victimHighlightCircles: Map<string, any> = new Map();
   private legendControl: any;
   private enableTooltips: boolean = true; // disabled on small/mobile screens
   private readonly MOBILE_BREAKPOINT = 640;
   private userLocale: string = 'en-US';
   private hoverDelayMs = 140;
   private victimDetailsCache: Map<string, any[]> = new Map();
+  private markerRefs: Map<string, any> = new Map(); // victim cluster id -> Leaflet marker
+  private prevVictimIds: Set<string> = new Set();
+  private autoFlashingIds: Set<string> = new Set();
+  private autoFlashTimeouts: Map<string, any> = new Map();
+  // Service-driven flashing support
+  private serviceFlashIds: Set<string> = new Set();
+  private serviceFlashTimeouts: Map<string, any> = new Map();
+  private serviceNoPriorityColorIds: Set<string> = new Set();
+  private victimFlashSub?: Subscription;
+  private pendingServiceFlashRequests: VictimFlashRequest[] = []; // queued before markers ready
 
   // Simple i18n dictionary (could later be externalized)
   private i18n: Record<string, string> = {
@@ -154,6 +179,10 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     this.renderLayers();
     // Ensure Leaflet recalculates dimensions after being placed in a flex container
     try { setTimeout(() => { this.map?.invalidateSize?.(); }, 60); } catch {}
+    // Subscribe to service-driven flash requests (browser only)
+    try {
+      this.victimFlashSub = this.victimFlashService.requests$.subscribe(req => this.handleServiceFlash(req));
+    } catch {}
   }
 
   ngOnDestroy() {
@@ -174,11 +203,37 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       clearInterval(this.forecastPulseTimer);
       this.forecastPulseTimer = undefined;
     }
+    if (this.ringPulseTimer) {
+      clearInterval(this.ringPulseTimer); this.ringPulseTimer = undefined;
+    }
+    // Clear auto-flash timers
+    for (const t of this.autoFlashTimeouts.values()) {
+      try { clearTimeout(t); } catch {}
+    }
+    this.autoFlashTimeouts.clear();
+    // Clear service flash timers & subscription
+    for (const t of this.serviceFlashTimeouts.values()) {
+      try { clearTimeout(t); } catch {}
+    }
+    this.serviceFlashTimeouts.clear();
+    if (this.victimFlashSub) {
+      try { this.victimFlashSub.unsubscribe(); } catch {}
+      this.victimFlashSub = undefined;
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
     if (this.map && this.L) {
       this.renderLayers();
+    }
+    if (changes['victimClusters']) {
+      this.handleNewVictims();
+    } else if (changes['flashingVictimIds']) {
+      // External flashing set changed; update classes directly
+      this.updateFlashingClasses();
+    }
+    if (changes['priorityFlashColors']) {
+      this.updateFlashingClasses();
     }
   }
 
@@ -187,6 +242,8 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     if (!L) return;
     this.overlays.clearLayers();
     this.forecastLayerRefs = [];
+  this.markerRefs.clear();
+    this.victimHighlightCircles.clear();
     // 🔴 Fire/Flood Zone Overlay
     for (const zone of this.hazardZones) {
       const isFlood = this.mapMode === 'Flood';
@@ -262,11 +319,27 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     let assignedClusterId = this.victimClusters.length > 0 ? this.victimClusters[0].id : null;
     for (const cluster of this.victimClusters) {
       const isAssigned = cluster.id === assignedClusterId;
+      const isFlashing = this.flashingVictimIds.includes(cluster.id);
       const icon = L.divIcon({
-        className: `victim-icon ${cluster.priority.toLowerCase()}${isAssigned ? ' assigned' : ''}`,
+        className: `victim-icon ${cluster.priority.toLowerCase()}${isAssigned ? ' assigned' : ''}${isFlashing ? ' flashing' : ''}`,
         html: `<span title="${cluster.priority}">${isAssigned ? '👤' : '🧑‍🤝‍🧑'}</span>`
       });
       const m = L.marker([cluster.lat, cluster.lon], { icon }).addTo(this.overlays);
+      this.markerRefs.set(cluster.id, m);
+      // Add fire incident highlight circle (Fire mode only)
+      if (this.mapMode === 'Fire') {
+        const color = this.priorityRingColor(cluster.priority);
+        const circle = L.circle([cluster.lat, cluster.lon], {
+          radius: 120, // meters (adjust as needed)
+          color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.15,
+          opacity: 0.85,
+          className: 'victim-ring'
+        }).addTo(this.overlays);
+        this.victimHighlightCircles.set(cluster.id, circle);
+      }
       if (this.enableTooltips) {
         this.attachTooltipWithDebounce(m, this.buildTooltipHTML('cluster', {
           id: cluster.id,
@@ -295,6 +368,8 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         });
       }
     }
+  // After (re)render, apply any dynamic flashing state (union external + auto)
+  this.updateFlashingClasses();
     // 🚑 My Unit Position (first responder is "my unit")
     let myUnitId = this.responders.length > 0 ? this.responders[0].id : null;
     for (const responder of this.responders) {
@@ -361,6 +436,205 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     this.startForecastPulseIfNeeded();
     // Add legend UI
     this.addLegendControl(L);
+    // After markers exist, apply any queued service flash requests
+    this.applyPendingServiceFlashes();
+    // Kick off ring pulse animation updates (CSS handles icon; JS adjusts circle style)
+    this.startRingPulseLoop();
+  }
+
+  /** Detect newly added victim clusters and start auto-flash if enabled */
+  private handleNewVictims() {
+    const currentIds = new Set(this.victimClusters.map(c => c.id));
+    const newIds: string[] = [];
+    for (const id of currentIds) {
+      if (!this.prevVictimIds.has(id)) newIds.push(id);
+    }
+    // Remove ids that vanished from maps / timers
+    for (const oldId of Array.from(this.prevVictimIds)) {
+      if (!currentIds.has(oldId)) {
+        this.prevVictimIds.delete(oldId);
+        if (this.autoFlashingIds.has(oldId)) this.stopAutoFlash(oldId);
+      }
+    }
+    // Begin auto flash
+    if (this.autoFlashNewVictims && newIds.length) {
+      for (const id of newIds) {
+        this.startAutoFlash(id);
+      }
+    }
+    // Update baseline set & classes
+    this.prevVictimIds = currentIds;
+    this.updateFlashingClasses();
+  }
+
+  private startAutoFlash(id: string) {
+    if (this.autoFlashingIds.has(id)) return;
+    this.autoFlashingIds.add(id);
+    this.victimFlashStarted.emit({ id, source: 'auto' });
+    const handle = setTimeout(() => {
+      this.stopAutoFlash(id);
+    }, Math.max(1000, this.autoFlashDurationMs));
+    this.autoFlashTimeouts.set(id, handle);
+  }
+
+  private stopAutoFlash(id: string) {
+    if (this.autoFlashingIds.delete(id)) {
+      const t = this.autoFlashTimeouts.get(id);
+      if (t) { try { clearTimeout(t); } catch {} }
+      this.autoFlashTimeouts.delete(id);
+      this.updateFlashingClasses();
+      this.victimFlashEnded.emit({ id, source: 'auto' });
+    }
+  }
+
+  /** Apply flashing classes based on external and auto sets */
+  private updateFlashingClasses() {
+    // If markers not yet ready, skip
+    if (!this.markerRefs.size) {
+      // Try again shortly in case this was called just before markers rendered
+      setTimeout(() => {
+        if (this.markerRefs.size) this.updateFlashingClasses();
+      }, 60);
+      return;
+    }
+    const external = new Set(this.flashingVictimIds);
+    const usePriority = this.priorityFlashColors;
+    for (const cluster of this.victimClusters) {
+      const marker = this.markerRefs.get(cluster.id);
+      if (!marker) continue;
+      const el = marker.getElement && marker.getElement();
+      if (!el) continue;
+      const shouldFlash = external.has(cluster.id) || this.autoFlashingIds.has(cluster.id) || this.serviceFlashIds.has(cluster.id);
+      if (shouldFlash) {
+        el.classList.add('flashing');
+        const skipPriority = this.serviceNoPriorityColorIds.has(cluster.id);
+        if (usePriority && !skipPriority) {
+          el.classList.add(`priority-${cluster.priority.toLowerCase()}`);
+        } else {
+          el.classList.remove('priority-immediate','priority-high','priority-medium','priority-low');
+        }
+      } else {
+        el.classList.remove('flashing');
+        el.classList.remove('priority-immediate','priority-high','priority-medium','priority-low');
+      }
+    }
+  }
+
+  /** Handle service-driven flash request */
+  private handleServiceFlash(req: VictimFlashRequest) {
+    const id = req.id;
+    if (!id || !this.victimClusters.find(c => c.id === id)) return; // ignore unknown id
+    // If markers not created yet (map not rendered), queue request
+    if (!this.markerRefs.size) {
+      this.pendingServiceFlashRequests.push(req);
+      return;
+    }
+    // Renew if already active
+    if (this.serviceFlashTimeouts.has(id)) {
+      try { clearTimeout(this.serviceFlashTimeouts.get(id)); } catch {}
+    }
+    this.serviceFlashIds.add(id);
+    if (req.priorityColors === false) {
+      this.serviceNoPriorityColorIds.add(id);
+    } else {
+      this.serviceNoPriorityColorIds.delete(id);
+    }
+    this.updateFlashingClasses();
+    this.victimFlashStarted.emit({ id, source: 'service' });
+    // Focus logic
+    const shouldFocus = typeof req.focus === 'boolean' ? req.focus : this.autoFocusOnServiceFlash;
+    if (shouldFocus) {
+      this.focusOnCluster(id);
+    }
+    const duration = Math.max(500, req.durationMs ?? this.autoFlashDurationMs);
+    const handle = setTimeout(() => this.endServiceFlash(id), duration);
+    this.serviceFlashTimeouts.set(id, handle);
+  }
+
+  private endServiceFlash(id: string) {
+    if (this.serviceFlashIds.delete(id)) {
+      const t = this.serviceFlashTimeouts.get(id);
+      if (t) { try { clearTimeout(t); } catch {} }
+      this.serviceFlashTimeouts.delete(id);
+      this.serviceNoPriorityColorIds.delete(id);
+      this.updateFlashingClasses();
+      this.victimFlashEnded.emit({ id, source: 'service' });
+    }
+  }
+
+  /** Fly/zoom to a cluster */
+  private focusOnCluster(id: string, zoom: number = 15) {
+    if (!this.map) return;
+    const marker = this.markerRefs.get(id);
+    if (!marker) return;
+    try {
+      const ll = marker.getLatLng?.();
+      if (ll) {
+        const currentZoom = this.map.getZoom?.() ?? zoom;
+        this.map.flyTo(ll, currentZoom < zoom ? zoom : currentZoom, { duration: 0.75 });
+      }
+    } catch {}
+  }
+
+  /** Apply any queued service flash requests once markers exist */
+  private applyPendingServiceFlashes() {
+    if (!this.pendingServiceFlashRequests.length || !this.markerRefs.size) return;
+    const pending = [...this.pendingServiceFlashRequests];
+    this.pendingServiceFlashRequests = [];
+    for (const req of pending) {
+      // Re-run with live markers
+      this.handleServiceFlash(req);
+    }
+  }
+
+  /** Map priority to ring base color */
+  private priorityRingColor(p: MapVictimCluster['priority']): string {
+    switch (p) {
+      case 'Immediate': return '#f44336';
+      case 'High': return '#ff9800';
+      case 'Medium': return '#ffeb3b';
+      case 'Low': return '#1976d2';
+      default: return '#ff9800';
+    }
+  }
+
+  private ringPulseTimer?: any;
+  private ringPulsePhase: number = 0; // legacy (unused for per-priority now)
+  private ringPhaseById: Map<string, number> = new Map();
+  private startRingPulseLoop() {
+    if (this.ringPulseTimer) {
+      clearInterval(this.ringPulseTimer); this.ringPulseTimer = undefined;
+    }
+    if (this.mapMode !== 'Fire' || this.victimHighlightCircles.size === 0) return;
+    // Per-priority cycle lengths (ms): Immediate 900, High 1100, Medium 1300, Low 1500
+    const cycleMs = (priority: MapVictimCluster['priority']) => {
+      switch (priority) {
+        case 'Immediate': return 900;
+        case 'High': return 1100;
+        case 'Medium': return 1300;
+        case 'Low': return 1500;
+      }
+    };
+    // 50ms tick for all; each circle computes its own phase based on its cycle
+    this.ringPulseTimer = setInterval(() => {
+      for (const [id, circle] of this.victimHighlightCircles.entries()) {
+        const cluster = this.victimClusters.find(c => c.id === id);
+        if (!cluster) continue;
+        const cyc = cycleMs(cluster.priority);
+        // advance stored phase time
+        const prev = this.ringPhaseById.get(id) ?? 0;
+        const next = (prev + 50) % cyc;
+        this.ringPhaseById.set(id, next);
+        const t = next / cyc; // 0..1
+        const scale = 0.85 + 0.3 * Math.sin(t * Math.PI * 2);
+        const opacity = 0.10 + 0.07 * (Math.sin(t * Math.PI * 2) * 0.5 + 0.5);
+        try {
+          const base = 120;
+          circle.setStyle({ fillOpacity: opacity });
+          circle.setRadius(base * scale);
+        } catch {}
+      }
+    }, 50);
   }
 
   /** Build unified HTML tooltip snippet */
@@ -487,6 +761,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
         <div class="legend-row"><span class="legend-swatch active-zone ${mode.toLowerCase()}"></span><span class="legend-label">Active ${mode} Zone</span></div>
         <div class="legend-row"><span class="legend-swatch forecast ${mode.toLowerCase()}"></span><span class="legend-label">Forecast Spread</span></div>
         <div class="legend-row"><span class="legend-icon">🧑‍🤝‍🧑</span><span class="legend-label">Victim Cluster</span></div>
+        <div class="legend-row"><span class="legend-swatch flashing-swatch"></span><span class="legend-label">Flashing / Tracked</span></div>
         <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🚑' : '🚑'}</span><span class="legend-label">Responder Unit</span></div>
   <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🏥' : '🏥'}</span><span class="legend-label">Hospital</span></div>
   <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🛟' : '🛟'}</span><span class="legend-label">Safe Zone</span></div>

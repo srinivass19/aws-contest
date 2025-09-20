@@ -87,6 +87,51 @@
 .victim-icon.medium { border-color: #ff9800; }
 .victim-icon.low { border-color: #1976d2; }
 
+/* Flashing / pulsing highlight for tracked victim clusters */
+.victim-icon.flashing {
+  animation: victimFlash var(--flash-speed,1.2s) ease-in-out infinite;
+  box-shadow: 0 0 0 4px rgba(255,235,59,0.55), 0 0 18px -2px rgba(255,193,7,0.75);
+  position: relative;
+}
+.victim-icon.flashing::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(255,193,7,0.55) 0%, rgba(255,193,7,0) 70%);
+  opacity: 0.55;
+  animation: victimFlashHalo 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes victimFlash {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.12); filter: brightness(1.25); }
+}
+@keyframes victimFlashHalo {
+  0%, 100% { transform: scale(0.9); opacity: 0.55; }
+  50% { transform: scale(1.15); opacity: 0.0; }
+}
+/* Speed tiers (Immediate fastest, Low slowest) */
+.victim-icon.flashing.priority-immediate { --flash-speed: 0.9s; }
+.victim-icon.flashing.priority-high { --flash-speed: 1.1s; }
+.victim-icon.flashing.priority-medium { --flash-speed: 1.3s; }
+.victim-icon.flashing.priority-low { --flash-speed: 1.5s; }
+/* Priority color variants (when priorityFlashColors enabled) */
+.victim-icon.flashing.priority-immediate { box-shadow: 0 0 0 4px rgba(244,67,54,0.55), 0 0 18px -2px rgba(244,67,54,0.85); }
+.victim-icon.flashing.priority-high { box-shadow: 0 0 0 4px rgba(255,152,0,0.55), 0 0 18px -2px rgba(255,152,0,0.8); }
+.victim-icon.flashing.priority-medium { box-shadow: 0 0 0 4px rgba(255,235,59,0.55), 0 0 18px -2px rgba(255,235,59,0.75); }
+.victim-icon.flashing.priority-low { box-shadow: 0 0 0 4px rgba(25,118,210,0.55), 0 0 18px -2px rgba(25,118,210,0.75); }
+
+/* Adjust halo color per priority */
+.victim-icon.flashing.priority-immediate::after { background: radial-gradient(circle at center, rgba(244,67,54,0.6) 0%, rgba(244,67,54,0) 70%); }
+.victim-icon.flashing.priority-high::after { background: radial-gradient(circle at center, rgba(255,152,0,0.6) 0%, rgba(255,152,0,0) 70%); }
+.victim-icon.flashing.priority-medium::after { background: radial-gradient(circle at center, rgba(255,235,59,0.6) 0%, rgba(255,235,59,0) 70%); }
+.victim-icon.flashing.priority-low::after { background: radial-gradient(circle at center, rgba(25,118,210,0.6) 0%, rgba(25,118,210,0) 70%); }
+@media (prefers-reduced-motion: reduce) {
+  .victim-icon.flashing, .victim-icon.flashing::after { animation: none; }
+  .victim-icon.flashing { box-shadow: 0 0 0 4px rgba(255,235,59,0.65); }
+}
+
 // Responder icons
 .responder-icon {
   font-size: 2.2rem;
@@ -135,6 +180,16 @@
 :host ::ng-deep .legend-swatch.forecast.fire { background: rgba(255,193,7,0.55); box-shadow: 0 0 0 2px rgba(255,193,7,0.35); }
 :host ::ng-deep .legend-swatch.active-zone.flood { background: rgba(33,150,243,0.55); }
 :host ::ng-deep .legend-swatch.forecast.flood { background: rgba(33,150,243,0.28); animation: pulseForecast 2.2s ease-in-out infinite; box-shadow: 0 0 0 2px rgba(33,150,243,0.35); }
+:host ::ng-deep .legend-swatch.flashing-swatch {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255,193,7,0.85), rgba(255,235,59,0.55));
+  box-shadow: 0 0 0 2px rgba(255,193,7,0.45), 0 0 8px -1px rgba(255,193,7,0.85);
+  animation: legendFlash 1.2s ease-in-out infinite;
+}
+@keyframes legendFlash {
+  0%,100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.15); filter: brightness(1.25); }
+}
 :host ::ng-deep .legend-icon { font-size: 1rem; width: 16px; text-align: center; }
 
 @keyframes pulseForecast {
