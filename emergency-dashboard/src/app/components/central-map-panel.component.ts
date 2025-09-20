@@ -152,6 +152,8 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       }
     } catch {}
     this.renderLayers();
+    // Ensure Leaflet recalculates dimensions after being placed in a flex container
+    try { setTimeout(() => { this.map?.invalidateSize?.(); }, 60); } catch {}
   }
 
   ngOnDestroy() {
