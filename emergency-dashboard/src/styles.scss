@@ -29,6 +29,14 @@
 	--footer-height: 130px;
 	--side-left-width: 320px;
 	--side-right-width: 360px;
+
+	/* Footer theming tokens */
+	--footer-grad-start: #181b1f; /* dark edge */
+	--footer-grad-mid: #20262c;  /* subtle light midpoint */
+	--footer-grad-end: #181b1f;  /* mirror end */
+	--footer-glass-overlay: rgba(255,255,255,0.04); /* soft sheen */
+	--footer-border: rgba(255,255,255,0.10);
+	--footer-border-strong: rgba(255,255,255,0.18);
 }
 
 @media (max-width: 1100px) {

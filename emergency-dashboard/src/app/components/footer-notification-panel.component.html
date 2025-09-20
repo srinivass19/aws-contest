@@ -18,7 +18,10 @@
     >✓✓</button>
   </div>
   <div class="notification-list">
-    <div *ngFor="let event of filteredEvents" class="notification-item fade-in" [class.read]="event.read">
+    <div *ngFor="let event of filteredEvents" class="notification-item fade-in"
+         [class.read]="event.read"
+         [attr.data-type]="event.type">
+      <span class="priority-badge" aria-hidden="true"></span>
       <span class="timestamp">{{ event.timestamp | date:'shortTime' }}</span>
       <span class="message">{{ event.message }}</span>
   <button

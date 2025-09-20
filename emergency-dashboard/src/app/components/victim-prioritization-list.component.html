@@ -1,5 +1,5 @@
-<div class="victim-list-panel">
-  <h2>Victim Prioritization</h2>
+<div class="victim-list-panel" role="region" aria-label="Victim prioritization panel">
+  <h2 class="panel-heading">Victim Prioritization</h2>
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-wrapper">
@@ -15,34 +15,60 @@
   </div>
 
   <!-- Loaded List -->
-  <ul *ngIf="!loading">
-    <li *ngFor="let cluster of filteredClusters; trackBy: trackById" class="victim-cluster">
-      <div class="priority-label {{ getPriorityLabel(cluster) | lowercase }}">
-        {{ getPriorityLabel(cluster) }}
-      </div>
-      <div class="cluster-main">
-        <div class="cluster-title">{{ cluster.name }} <span class="cluster-id">({{ cluster.id }})</span></div>
-        <div class="location">
-          <span>📍 {{ cluster.location.lat }}, {{ cluster.location.lon }}</span>
-          <span class="uncertainty">±{{ cluster.location.uncertainty }}m</span>
+  <ul *ngIf="!loading" class="cluster-list" role="list">
+    <li *ngFor="let cluster of filteredClusters; trackBy: trackById" class="victim-cluster priority-{{ getPriorityLabel(cluster) | lowercase }}" role="listitem" tabindex="0" aria-label="{{cluster.name}} priority {{getPriorityLabel(cluster)}} has {{cluster.numVictims}} victims status {{cluster.status}}">
+      <header class="cluster-header">
+        <div class="title-wrap">
+          <div class="cluster-title">{{ cluster.name }} <span class="cluster-id">({{ cluster.id }})</span></div>
         </div>
-        <div class="victim-count">Victims: {{ cluster.numVictims }}</div>
-        <div class="needs">
-          Needs: <span *ngFor="let need of cluster.needs; let last = last">{{ need }}<span *ngIf="!last">, </span></span>
+        <div class="priority-chip {{ getPriorityLabel(cluster) | lowercase }}" [attr.aria-label]="'Priority ' + getPriorityLabel(cluster)">
+          <span class="p-dot"></span>{{ getPriorityLabel(cluster) }}
         </div>
-        <div class="confidence">AI Confidence: {{ cluster.confidence | percent:'1.0-0' }}</div>
-        <div class="status">Status: <span class="status-label">{{ cluster.status }}</span></div>
+      </header>
+      <div class="cluster-body">
+        <div class="meta-row location" aria-label="Location approx">
+          <span class="icon" aria-hidden="true">📍</span>
+          <span class="coords">{{ cluster.location.lat }}, {{ cluster.location.lon }}</span>
+          <span class="uncertainty" aria-label="Uncertainty plus minus {{cluster.location.uncertainty}} meters">±{{ cluster.location.uncertainty }}m</span>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item victims" aria-label="Victim count">
+            <span class="icon" aria-hidden="true">🧍</span>
+            <span class="label">Victims</span>
+            <span class="value">{{ cluster.numVictims }}</span>
+          </div>
+          <div class="meta-item needs" aria-label="Needs">
+            <span class="icon" aria-hidden="true">🧰</span>
+            <span class="label">Needs</span>
+            <span class="value">
+              <ng-container *ngFor="let need of cluster.needs; let last = last">{{ need }}<span *ngIf="!last">, </span></ng-container>
+            </span>
+          </div>
+          <div class="meta-item status" aria-label="Status {{cluster.status}}">
+            <span class="icon" aria-hidden="true">⚑</span>
+            <span class="label">Status</span>
+            <span class="value status-chip s-{{ cluster.status.replace(' ', '-') }}">{{ cluster.status }}</span>
+          </div>
+        </div>
+        <div class="confidence-row" aria-label="AI confidence {{ cluster.confidence | percent:'1.0-0' }}">
+          <span class="icon" aria-hidden="true">🤖</span>
+          <span class="label">Confidence</span>
+          <span class="conf-value">{{ cluster.confidence | percent:'1.0-0' }}</span>
+        </div>
+        <div class="confidence-bar" aria-hidden="true">
+          <div class="fill" [style.width.%]="cluster.confidence * 100"></div>
+        </div>
       </div>
-      <div class="actions">
-        <button mat-stroked-button color="primary" (click)="assignResponder.emit(cluster.id)" class="action-btn assign" aria-label="Assign responder to {{cluster.name}}">
+      <footer class="actions">
+        <button (click)="assignResponder.emit(cluster.id)" class="action-btn assign" aria-label="Assign responder to {{cluster.name}}">
           <span class="btn-icon">🚑</span>
           <span class="btn-label">Assign</span>
         </button>
-        <button mat-stroked-button color="accent" (click)="addNote.emit(cluster.id)" class="action-btn note" aria-label="Add note for {{cluster.name}}">
+        <button (click)="addNote.emit(cluster.id)" class="action-btn note" aria-label="Add note for {{cluster.name}}">
           <span class="btn-icon">📝</span>
           <span class="btn-label">Note</span>
         </button>
-      </div>
+      </footer>
     </li>
   </ul>
 </div>
