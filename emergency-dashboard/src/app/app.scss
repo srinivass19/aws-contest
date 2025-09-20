@@ -12,17 +12,44 @@ app-footer-notification-panel {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
-	padding-top: 64px; /* header height */
-	padding-bottom: 120px; /* footer height */
+	padding-top: var(--header-height);
+	padding-bottom: var(--footer-height);
 	box-sizing: border-box;
+	overflow: hidden;
 }
 
 .dashboard-main {
 	display: flex;
 	flex: 1 1 auto;
 	min-height: 0;
+	height: calc(100vh - var(--header-height) - var(--footer-height));
 	overflow: hidden;
 }
+
+/* Side panel widths via variables */
+app-victim-prioritization-list {
+	flex: 0 0 var(--side-left-width);
+	min-width: var(--side-left-width);
+	max-width: var(--side-left-width);
+	border-right: 2px solid #e0e0e0;
+	background: #fafafa;
+	height: 100%;
+	overflow: hidden;
+	transition: width .25s ease, flex-basis .25s ease, min-width .25s ease, max-width .25s ease;
+}
+app-right-panel-ai-assistant {
+	flex: 0 0 var(--side-right-width);
+	min-width: var(--side-right-width);
+	max-width: var(--side-right-width);
+	height: 100%;
+	border-left: 2px solid #e0e0e0;
+	background: #f5f5f5;
+	overflow: hidden;
+	transition: width .25s ease, flex-basis .25s ease, min-width .25s ease, max-width .25s ease;
+}
+
+
+/* Toggle handle base styles moved into panel-toggle-handle.component.scss */
 
 app-victim-prioritization-list {
 	flex: 0 0 320px;

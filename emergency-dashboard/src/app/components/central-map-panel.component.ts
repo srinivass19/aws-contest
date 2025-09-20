@@ -99,43 +99,71 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   }
 
   async ngAfterViewInit() {
-    // Guard: prevent double initialization if Angular re-attaches the view (e.g., conditional rendering / hydration edge cases)
-    if (this.map) {
-      return; // already initialized
-    }
-    if (isPlatformBrowser(this.platformId)) {
-      const L = await import('leaflet');
-      this.L = L;
-      // Double-check target element exists to avoid runtime errors
-      const mapEl = document.getElementById('map');
-      if (!mapEl) return;
-      this.map = L.map(mapEl, {
-        center: [37.7749, -122.4194],
-        zoom: 13,
-        layers: [
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-          })
-        ]
-      });
-      this.overlays = L.layerGroup();
-      this.overlays.addTo(this.map);
-      // Decide tooltip enablement (disable on narrow/mobile screens)
+    // Robust guard: Under SSR/hydration or when navigating away and back, Angular can destroy/recreate
+    // the component while Leaflet leaves a stamped container (_leaflet_id). A later attempt to
+    // re-initialize with L.map(existingEl) then throws: "Map container is already initialized.".
+    // We handle three cases:
+    // 1. this.map still defined -> skip (already active)
+    // 2. this.map was destroyed but the DOM element still has a _leaflet_id -> scrub it
+    // 3. Normal fresh initialization
+    if (!isPlatformBrowser(this.platformId)) return; // no-op during SSR
+
+    const mapEl = document.getElementById('map');
+    if (!mapEl) return;
+
+    // If we have a lingering Leaflet container (from a previous instance) clean it so a new map can mount.
+    if ((mapEl as any)._leaflet_id) {
       try {
-        if (typeof window !== 'undefined') {
-          this.enableTooltips = window.innerWidth >= this.MOBILE_BREAKPOINT;
-          this.userLocale = navigator.language || this.userLocale;
-        }
+        // Remove any leftover child nodes Leaflet injected
+        mapEl.innerHTML = '';
+        // Strip leaflet-* classes while preserving any custom ones
+        const cleaned = mapEl.className
+          .split(/\s+/)
+          .filter(c => c && !c.startsWith('leaflet-'))
+          .join(' ');
+        mapEl.className = cleaned;
+        // Delete the stamp so Leaflet no longer thinks it's initialized
+        delete (mapEl as any)._leaflet_id;
       } catch {}
-      this.renderLayers();
     }
+
+    // If we somehow retained a live map instance, just bail out
+    if (this.map) return;
+
+    const L = await import('leaflet');
+    this.L = L;
+
+    this.map = L.map(mapEl, {
+      center: [37.7749, -122.4194],
+      zoom: 13,
+      layers: [
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        })
+      ]
+    });
+    this.overlays = L.layerGroup();
+    this.overlays.addTo(this.map);
+    // Decide tooltip enablement (disable on narrow/mobile screens)
+    try {
+      if (typeof window !== 'undefined') {
+        this.enableTooltips = window.innerWidth >= this.MOBILE_BREAKPOINT;
+        this.userLocale = navigator.language || this.userLocale;
+      }
+    } catch {}
+    this.renderLayers();
   }
 
   ngOnDestroy() {
     // Clean up Leaflet map instance to free DOM handlers and allow re-init later without error
     if (this.map) {
       try {
+        const container = this.map.getContainer?.();
         this.map.remove();
+        // After remove(), Leaflet leaves a _leaflet_id on the container; delete it so we can safely re-init.
+        if (container && (container as any)._leaflet_id) {
+          try { delete (container as any)._leaflet_id; } catch {}
+        }
       } catch {}
       this.map = undefined;
       this.overlays = undefined;

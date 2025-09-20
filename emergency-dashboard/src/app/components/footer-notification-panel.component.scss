@@ -3,15 +3,17 @@
   position: sticky;
   bottom: 0;
   width: 100%;
-  height: 120px; // Change this value as needed
-  background: #222;
+  height: 115px; /* slightly reduced to reclaim vertical space */
+  background: #1f1f21;
   color: #fff;
-  padding: 0.5rem 1.5rem 0.5rem 1.5rem;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+  padding: 0.45rem 1.25rem 0.55rem 1.25rem;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
-  border-top: 2px solid #444;
+  border-top: 1px solid #3a3a3d;
   z-index: 100;
+  box-sizing: border-box;
+  overflow: hidden; /* hide outer scroll */
 }
 .notification-controls {
   display: flex;
@@ -20,32 +22,43 @@
   margin-bottom: 0.5rem;
 }
 .notification-list {
+  position: relative;
   flex: 1 1 auto;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  padding-right: 6px; /* space for hidden scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -webkit-overflow-scrolling: touch;
 }
+.notification-list::-webkit-scrollbar { display: none; }
+
+/* Gradient fade top/bottom if scrolling */
+.notification-list::before,
+.notification-list::after {
+  content: '';
+  position: sticky;
+  left: 0;
+  right: 0;
+  height: 12px;
+  pointer-events: none;
+  z-index: 2;
+}
+.notification-list::before { top: 0; background: linear-gradient(to bottom,#1f1f21,rgba(31,31,33,0)); }
+.notification-list::after { bottom: 0; background: linear-gradient(to top,#1f1f21,rgba(31,31,33,0)); }
 .notification-item {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.25rem 0;
-  border-bottom: 1px solid #333;
+  gap: 0.85rem;
+  padding: 0.18rem 0;
+  border-bottom: 1px dashed #333;
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 .notification-item.read {
   opacity: 0.5;
 }
-.timestamp {
-  font-size: 0.9em;
-  color: #bbb;
-  min-width: 60px;
-}
-.message {
-  flex: 1 1 auto;
-}
-.no-events {
-  color: #aaa;
-  font-style: italic;
-  padding: 0.5rem 0;
-}
+.timestamp { font-size: 0.7rem; color: #9ea2a8; min-width: 54px; }
+.message { flex: 1 1 auto; }
+.no-events { color:#888; font-style: italic; padding:0.4rem 0; font-size:0.75rem; }

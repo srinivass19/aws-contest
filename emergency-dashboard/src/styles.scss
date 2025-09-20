@@ -24,6 +24,52 @@
 /* You can add global styles to this file, and also import other style files */
 @import 'leaflet/dist/leaflet.css';
 
+:root {
+	--header-height: 72px;
+	--footer-height: 115px;
+	--side-left-width: 320px;
+	--side-right-width: 360px;
+}
+
+@media (max-width: 1100px) {
+	:root {
+		--side-right-width: 330px;
+	}
+}
+@media (max-width: 900px) {
+	:root {
+		--side-right-width: 300px;
+		--side-left-width: 300px;
+	}
+}
+@media (max-width: 720px) {
+	:root {
+		--footer-height: 100px; /* shrink footer */
+	}
+}
+@media (max-width: 560px) {
+	:root {
+		--side-left-width: 260px;
+		--side-right-width: 260px;
+		--footer-height: 92px;
+	}
+}
+@media (max-width: 480px) {
+	:root {
+		--footer-height: 84px;
+	}
+}
+
+html, body {
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	overflow: hidden; /* prevent global scrollbar; internal regions manage scroll */
+	box-sizing: border-box;
+}
+
+*, *::before, *::after { box-sizing: inherit; }
+
 /* Unified Leaflet tooltip styling */
 .unified-leaflet-tooltip {
 	background: transparent;

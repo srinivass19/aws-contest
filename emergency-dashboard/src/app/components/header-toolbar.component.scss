@@ -22,7 +22,7 @@
   z-index: 1100;
   color: #fff;
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
-  height: 72px;
+  height: var(--header-height);
   padding: 0 6px;
   box-sizing: border-box;
 }

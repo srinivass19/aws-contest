@@ -1,4 +1,5 @@
-import { Component, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
+import { NgIf } from '@angular/common';
 import { MapboxService } from './services/mapbox.service';
 import { FormsModule } from '@angular/forms';
 import { HeaderToolbarComponent } from './components/header-toolbar.component';
@@ -9,7 +10,7 @@ import { FooterNotificationPanelComponent } from './components/footer-notificati
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderToolbarComponent, VictimPrioritizationListComponent, CentralMapPanelComponent, RightPanelAIAssistantComponent, FooterNotificationPanelComponent, FormsModule],
+  imports: [HeaderToolbarComponent, VictimPrioritizationListComponent, CentralMapPanelComponent, RightPanelAIAssistantComponent, FooterNotificationPanelComponent, FormsModule, NgIf],
   templateUrl: './app.html',
   styleUrls: ['./app.scss']
 })
@@ -51,7 +52,7 @@ export class App {
   ];
   notificationFilter: string = 'all';
 
-  protected readonly title = signal('emergency-dashboard');
+  readonly title = 'emergency-dashboard';
   // Demo data for map panel
   // Demo data for both modes
   incidentHazardZones: { [incident: string]: MapHazardZone[] } = {
