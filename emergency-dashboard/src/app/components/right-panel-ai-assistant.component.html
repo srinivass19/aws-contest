@@ -1,14 +1,25 @@
 <div class="right-panel-ai-assistant">
-  <h3>AI Assistant & Localized Summaries</h3>
-  <div class="summary-box">
-    <label>Text Summary</label>
-    <div class="summary-content">{{ summary || 'Awaiting AI-generated update...' }}</div>
-    <button mat-raised-button color="primary" (click)="playTTS()">🔊 Play Voice</button>
+  <div class="panel-scroll">
+    <h3>AI Assistant & Localized Summaries</h3>
+    <div class="summary-box">
+      <label class="section-label">Text Summary</label>
+      <div class="summary-content">{{ summary || 'Awaiting AI-generated update...' }}</div>
+      <div class="summary-actions">
+        <button mat-raised-button color="primary" (click)="playTTS()" class="action-btn voice" aria-label="Play summary as audio">
+          <span class="btn-icon">🔊</span>
+          <span class="btn-label">Play Voice</span>
+        </button>
+      </div>
+    </div>
+    <div class="responder-queries">
+      <label class="section-label">Responder Query</label>
+      <input placeholder="Type your question..." [value]="responderQuery" (input)="onQueryInput($event)" (keyup.enter)="onSubmit()" />
+    </div>
   </div>
-  <div class="responder-queries">
-    <label>Responder Query</label>
-  <input placeholder="Type your question..." [value]="responderQuery" (input)="onQueryInput($event)" (keyup.enter)="onSubmit()" />
-    <button mat-stroked-button color="accent" (click)="onSubmit()">Ask AI</button>
-    <!-- Optionally, add a voice input button here -->
+  <div class="panel-footer-actions">
+    <button mat-stroked-button color="accent" (click)="onSubmit()" class="action-btn ask" aria-label="Submit responder question">
+      <span class="btn-icon">🤖</span>
+      <span class="btn-label">Ask AI</span>
+    </button>
   </div>
 </div>
