@@ -16,24 +16,18 @@ import { FooterNotificationPanelComponent } from './components/footer-notificati
 export class App {
   // Map center coordinates for each incident
   incidentCenters: { [incident: string]: [number, number] } = {
-    'Fire - Downtown Warehouse': [37.7820, -122.4100],
     'Flood - Riverside District': [37.7900, -122.4200],
-    'Fire - Industrial Park': [37.7605, -122.4302],
     'Flood - East Valley': [37.7702, -122.4401],
-    'Fire - North Hills': [37.7509, -122.4507],
     'Flood - South Meadows': [37.7303, -122.4605],
-    'Fire - City Center': [37.7208, -122.4702],
     'Flood - West End': [37.7102, -122.4801]
   };
-  mapCenter: [number, number] = [37.7820, -122.4100];
-  aiSummary: string = 'Fire contained in North Sector. 3 victims awaiting evacuation. Medical team en route.';
+  mapCenter: [number, number] = [37.7900, -122.4200];
+  aiSummary: string = 'Flood response active. Assessing inundation zones and coordinating victim evacuation.';
   responderQuery: string = '';
 
   incidents: string[];
   selectedIncident: string;
-  mapMode: 'Fire' | 'Flood' = 'Fire';
-  // Tracks if user manually switched map mode (prevents auto incident-based switching)
-  private mapModeManualOverride: boolean = false;
+  // Flood-only: mapMode removed
   forecastHour: number = 0;
   priority: string = 'All';
 
@@ -55,40 +49,20 @@ export class App {
   // Demo data for map panel
   // Demo data for both modes
   incidentHazardZones: { [incident: string]: MapHazardZone[] } = {
-    'Fire - Downtown Warehouse': [
-      { id: 'fire-hz-dw', coordinates: [
-        [ [37.779, -122.413], [37.785, -122.413], [37.785, -122.407], [37.779, -122.407] ]
-      ], riskScore: 0.95 }
-    ],
     'Flood - Riverside District': [
       { id: 'flood-hz-rd', coordinates: [
         [ [37.787, -122.423], [37.793, -122.423], [37.793, -122.417], [37.787, -122.417] ]
       ], riskScore: 0.7 }
-    ],
-    'Fire - Industrial Park': [
-      { id: 'fire-hz-ip', coordinates: [
-        [ [37.758, -122.433], [37.764, -122.433], [37.764, -122.427], [37.758, -122.427] ]
-      ], riskScore: 0.9 }
     ],
     'Flood - East Valley': [
       { id: 'flood-hz-ev', coordinates: [
         [ [37.767, -122.443], [37.773, -122.443], [37.773, -122.437], [37.767, -122.437] ]
       ], riskScore: 0.7 }
     ],
-    'Fire - North Hills': [
-      { id: 'fire-hz-nh', coordinates: [
-        [ [37.748, -122.453], [37.754, -122.453], [37.754, -122.447], [37.748, -122.447] ]
-      ], riskScore: 0.92 }
-    ],
     'Flood - South Meadows': [
       { id: 'flood-hz-sm', coordinates: [
         [ [37.727, -122.463], [37.733, -122.463], [37.733, -122.457], [37.727, -122.457] ]
       ], riskScore: 0.7 }
-    ],
-    'Fire - City Center': [
-      { id: 'fire-hz-cc', coordinates: [
-        [ [37.718, -122.473], [37.724, -122.473], [37.724, -122.467], [37.718, -122.467] ]
-      ], riskScore: 0.93 }
     ],
     'Flood - West End': [
       { id: 'flood-hz-we', coordinates: [
@@ -97,19 +71,9 @@ export class App {
     ]
   };
   incidentHazardPredictions: { [incident: string]: MapHazardPrediction[] } = {
-    'Fire - Downtown Warehouse': [
-      { id: 'fire-pred-dw', coordinates: [
-        [ [37.777, -122.415], [37.787, -122.415], [37.787, -122.405], [37.777, -122.405] ]
-      ], timestamp: '2025-09-18T17:00:00Z' }
-    ],
     'Flood - Riverside District': [
       { id: 'flood-pred-rd', coordinates: [
         [ [37.785, -122.425], [37.795, -122.425], [37.795, -122.415], [37.785, -122.415] ]
-      ], timestamp: '2025-09-18T17:00:00Z' }
-    ],
-    'Fire - Industrial Park': [
-      { id: 'fire-pred-ip', coordinates: [
-        [ [37.756, -122.435], [37.766, -122.435], [37.766, -122.425], [37.756, -122.425] ]
       ], timestamp: '2025-09-18T17:00:00Z' }
     ],
     'Flood - East Valley': [
@@ -117,19 +81,9 @@ export class App {
         [ [37.765, -122.445], [37.775, -122.445], [37.775, -122.435], [37.765, -122.435] ]
       ], timestamp: '2025-09-18T17:00:00Z' }
     ],
-    'Fire - North Hills': [
-      { id: 'fire-pred-nh', coordinates: [
-        [ [37.746, -122.455], [37.756, -122.455], [37.756, -122.445], [37.746, -122.445] ]
-      ], timestamp: '2025-09-18T17:00:00Z' }
-    ],
     'Flood - South Meadows': [
       { id: 'flood-pred-sm', coordinates: [
         [ [37.725, -122.465], [37.735, -122.465], [37.735, -122.455], [37.725, -122.455] ]
-      ], timestamp: '2025-09-18T17:00:00Z' }
-    ],
-    'Fire - City Center': [
-      { id: 'fire-pred-cc', coordinates: [
-        [ [37.716, -122.475], [37.726, -122.475], [37.726, -122.465], [37.716, -122.465] ]
       ], timestamp: '2025-09-18T17:00:00Z' }
     ],
     'Flood - West End': [
@@ -146,13 +100,9 @@ export class App {
   incidentFacilities: { [incident: string]: MapFacility[] } = {}; // will be filled in constructor
 
   incidentResponders: { [incident: string]: MapResponder[] } = {
-    'Fire - Downtown Warehouse': [ { id: 'R1', lat: 37.7822, lon: -122.4102, unitType: 'Ambulance' } ],
     'Flood - Riverside District': [ { id: 'R2', lat: 37.7902, lon: -122.4203, unitType: 'Ambulance' } ],
-    'Fire - Industrial Park': [ { id: 'R3', lat: 37.7607, lon: -122.4305, unitType: 'Ambulance' } ],
     'Flood - East Valley': [ { id: 'R4', lat: 37.7704, lon: -122.4403, unitType: 'Ambulance' } ],
-    'Fire - North Hills': [ { id: 'R5', lat: 37.7511, lon: -122.4509, unitType: 'Ambulance' } ],
     'Flood - South Meadows': [ { id: 'R6', lat: 37.7305, lon: -122.4607, unitType: 'Ambulance' } ],
-    'Fire - City Center': [ { id: 'R7', lat: 37.7210, lon: -122.4704, unitType: 'Ambulance' } ],
     'Flood - West End': [ { id: 'R8', lat: 37.7104, lon: -122.4803, unitType: 'Ambulance' } ]
   };
   incidentRoutes: { [incident: string]: MapRoute[] } = {};
@@ -177,13 +127,6 @@ export class App {
   get facilities(): MapFacility[] { return this._facilities; }
   // All clusters for all incidents
   allMapVictimClusters: { [incident: string]: MapVictimCluster[] } = (() => {
-    // For fire incidents, place clusters by priority: Immediate=center, High=close, Medium=farther, Low=farthest
-    const fireIncidents = [
-      'Fire - Downtown Warehouse',
-      'Fire - Industrial Park',
-      'Fire - North Hills',
-      'Fire - City Center',
-    ];
     const floodIncidents = [
       'Flood - Riverside District',
       'Flood - East Valley',
@@ -194,101 +137,32 @@ export class App {
     const clusterCount = 5;
     const result: { [incident: string]: MapVictimCluster[] } = {};
     let incidentIdx = 0;
-    // Fire incidents: priority-based rings
-    for (const incident of fireIncidents) {
-      const center = this.incidentCenters[incident];
-      const baseLat = center[0];
-      const baseLon = center[1];
-      const clusters: MapVictimCluster[] = [];
-      // Priority: Immediate=center, High=~120m, Medium=~200m, Low=~300m (spread out even more)
-      // 1 deg lat ~ 111km, 1 deg lon ~ 88km at SF
-      const metersToLat = 1 / 111000;
-      const metersToLon = 1 / 88000;
-      const rings = {
-        'Immediate': 0,
-        'High': 120,
-        'Medium': 200,
-        'Low': 300
-      };
-      // Assign priorities to clusters
-      const clusterPriorities = ['Immediate', 'High', 'High', 'Medium', 'Low'];
-      let highIdx = 0, mediumIdx = 0, lowIdx = 0;
-      for (let i = 0; i < clusterCount; i++) {
-        const priority = clusterPriorities[i] as 'Immediate' | 'High' | 'Medium' | 'Low';
-        let lat = baseLat, lon = baseLon;
-        if (priority === 'Immediate') {
-          // Center
-        } else {
-          // Place in ring for this priority
-          let ringRadius = rings[priority];
-          // Spread High, Medium, Low evenly in their rings
-          let angle = 0;
-          if (priority === 'High') {
-            angle = (2 * Math.PI * highIdx) / 2; highIdx++;
-          } else if (priority === 'Medium') {
-            angle = (2 * Math.PI * mediumIdx) / 1; mediumIdx++;
-          } else if (priority === 'Low') {
-            angle = (2 * Math.PI * lowIdx) / 1; lowIdx++;
-          }
-          // Add a small random offset for realism
-          const jitterLat = (Math.random() - 0.5) * metersToLat * 5;
-          const jitterLon = (Math.random() - 0.5) * metersToLon * 5;
-          lat = baseLat + Math.cos(angle) * ringRadius * metersToLat + jitterLat;
-          lon = baseLon + Math.sin(angle) * ringRadius * metersToLon + jitterLon;
-        }
-        clusters.push({
-          id: `VC-${incidentIdx + 2}${i + 1}01`,
-          lat,
-          lon,
-          priority
-        });
-      }
-      result[incident] = clusters;
-      incidentIdx++;
-    }
-    // Flood incidents: priority-based rings (same as fire)
     for (const incident of floodIncidents) {
       const center = this.incidentCenters[incident];
       const baseLat = center[0];
       const baseLon = center[1];
       const clusters: MapVictimCluster[] = [];
-      // Priority: Immediate=center, High=~120m, Medium=~200m, Low=~300m (spread out even more)
       const metersToLat = 1 / 111000;
       const metersToLon = 1 / 88000;
-      const rings = {
-        'Immediate': 0,
-        'High': 120,
-        'Medium': 200,
-        'Low': 300
-      };
-      const clusterPriorities = ['Immediate', 'High', 'High', 'Medium', 'Low'];
+      const rings = { 'Immediate': 0, 'High': 120, 'Medium': 200, 'Low': 300 };
       let highIdx = 0, mediumIdx = 0, lowIdx = 0;
       for (let i = 0; i < clusterCount; i++) {
-        const priority = clusterPriorities[i] as 'Immediate' | 'High' | 'Medium' | 'Low';
+        const priority = priorities[i] as 'Immediate' | 'High' | 'Medium' | 'Low';
         let lat = baseLat, lon = baseLon;
         if (priority === 'Immediate') {
-          // Center
+          // center
         } else {
-          let ringRadius = rings[priority];
+          const ringRadius = rings[priority];
           let angle = 0;
-          if (priority === 'High') {
-            angle = (2 * Math.PI * highIdx) / 2; highIdx++;
-          } else if (priority === 'Medium') {
-            angle = (2 * Math.PI * mediumIdx) / 1; mediumIdx++;
-          } else if (priority === 'Low') {
-            angle = (2 * Math.PI * lowIdx) / 1; lowIdx++;
-          }
+            if (priority === 'High') { angle = (2 * Math.PI * highIdx) / 2; highIdx++; }
+            else if (priority === 'Medium') { angle = (2 * Math.PI * mediumIdx) / 1; mediumIdx++; }
+            else if (priority === 'Low') { angle = (2 * Math.PI * lowIdx) / 1; lowIdx++; }
           const jitterLat = (Math.random() - 0.5) * metersToLat * 5;
           const jitterLon = (Math.random() - 0.5) * metersToLon * 5;
           lat = baseLat + Math.cos(angle) * ringRadius * metersToLat + jitterLat;
           lon = baseLon + Math.sin(angle) * ringRadius * metersToLon + jitterLon;
         }
-        clusters.push({
-          id: `VC-${incidentIdx + 2}${i + 1}01`,
-          lat,
-          lon,
-          priority
-        });
+        clusters.push({ id: `VC-${incidentIdx + 2}${i + 1}01`, lat, lon, priority });
       }
       result[incident] = clusters;
       incidentIdx++;
@@ -303,13 +177,9 @@ export class App {
 
   constructor(private cdr: ChangeDetectorRef, private mapboxService: MapboxService) {
     this.incidents = [
-      'Fire - Downtown Warehouse',
       'Flood - Riverside District',
-      'Fire - Industrial Park',
       'Flood - East Valley',
-      'Fire - North Hills',
       'Flood - South Meadows',
-      'Fire - City Center',
       'Flood - West End'
     ];
     this.selectedIncident = this.incidents.length > 0 ? this.incidents[0] : '';
@@ -410,20 +280,13 @@ export class App {
 
   // For each incident, fetch Mapbox road-based routes and update incidentRoutes
   async updateAllIncidentRoutes() {
-    const fireIncidents = [
-      'Fire - Downtown Warehouse',
-      'Fire - Industrial Park',
-      'Fire - North Hills',
-      'Fire - City Center',
-    ];
     const floodIncidents = [
       'Flood - Riverside District',
       'Flood - East Valley',
       'Flood - South Meadows',
       'Flood - West End',
     ];
-    const allIncidents = [...fireIncidents, ...floodIncidents];
-    for (const incident of allIncidents) {
+    for (const incident of floodIncidents) {
       const hz = (this.incidentHazardZones[incident]?.[0]?.coordinates[0]) || this.incidentCenters[incident];
       const pred = (this.incidentHazardPredictions[incident]?.[0]?.coordinates[0]) || this.incidentCenters[incident];
       // Get centroid of prediction polygon
@@ -479,32 +342,14 @@ export class App {
     if (event) event.read = true;
   }
 
-  onMapModeChange(mode: 'Fire' | 'Flood') {
-    this.mapModeManualOverride = true; // user explicitly changed mode
-    this.mapMode = mode;
-  }
-  
   onIncidentChange(incident: string) {
     this.selectedIncident = incident;
-    // Auto switch map mode based on incident naming convention unless user manually overrode
-    if (!this.mapModeManualOverride) {
-      if (incident.toLowerCase().includes('flood')) {
-        this.mapMode = 'Flood';
-      } else if (incident.toLowerCase().includes('fire')) {
-        this.mapMode = 'Fire';
-      }
-    }
     this.priority = 'All'; // Reset priority filter on incident change
     this.updateMapVictimClusters();
     this.updateVictimClusters();
     this.updateIncidentMapData();
     // Recompute forecast based on current slider hour
     this.recomputeForecastForIncident(incident);
-  }
-
-  // Allow resetting automatic behavior (could be triggered by future UI control)
-  resetMapModeAutoBehavior() {
-    this.mapModeManualOverride = false;
   }
 
   updateIncidentMapData() {

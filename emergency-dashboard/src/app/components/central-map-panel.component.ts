@@ -61,7 +61,8 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   @Input() routes: MapRoute[] = [];
   @Input() facilities: MapFacility[] = [];
   @Input() predictionTimestamp: string = '';
-  @Input() mapMode: 'Fire' | 'Flood' = 'Fire';
+  // Flood-only mode (mapMode kept for minimal external template disruption but fixed to 'Flood')
+  @Input() mapMode: 'Flood' = 'Flood';
   @Output() predictionTimestampChange = new EventEmitter<string>();
 
   private map?: any;
@@ -157,58 +158,36 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     if (!L) return;
     this.overlays.clearLayers();
     this.forecastLayerRefs = [];
-    // 🔴 Fire/Flood Zone Overlay
+    // � Flood Zone Overlay (fire logic removed)
     for (const zone of this.hazardZones) {
-      const isFlood = this.mapMode === 'Flood';
-      const color = !isFlood
-        ? 'rgba(255, 0, 0, 0.55)'
-        : 'rgba(33, 150, 243, 0.55)';
       for (const poly of zone.coordinates) {
-        // For flood incidents make outline slightly thicker and add dashed inner accent by layering
-        if (isFlood) {
-          // Base filled polygon
-          const activeLayer = L.polygon(poly, {
-            color: 'rgba(33,150,243,0.9)',
-            fillColor: color,
+        const activeLayer = L.polygon(poly, {
+          color: 'rgba(33,150,243,0.9)',
+            fillColor: 'rgba(33, 150, 243, 0.55)',
             fillOpacity: 0.32,
             weight: 4,
             dashArray: undefined
-          }).addTo(this.overlays);
-          if (this.enableTooltips) {
-            this.attachTooltipWithDebounce(activeLayer, this.buildTooltipHTML('zone', {
-              title: 'Active Flood Zone',
-              risk: zone.riskScore
-            }));
-          }
-          // Subtle inner accent (dashed lighter stroke)
-            L.polygon(poly, {
-              color: 'rgba(144,202,249,0.9)',
-              fill: false,
-              weight: 2,
-              dashArray: '6 6'
-            }).addTo(this.overlays);
-        } else {
-          const fireLayer = L.polygon(poly, {
-            color,
-            fillColor: color,
-            fillOpacity: 0.35,
-            weight: 3,
-            dashArray: undefined
-          }).addTo(this.overlays);
-          if (this.enableTooltips) {
-            this.attachTooltipWithDebounce(fireLayer, this.buildTooltipHTML('zone', {
-              title: 'Active Fire Zone',
-              risk: zone.riskScore
-            }));
-          }
+        }).addTo(this.overlays);
+        if (this.enableTooltips) {
+          this.attachTooltipWithDebounce(activeLayer, this.buildTooltipHTML('zone', {
+            title: 'Active Flood Zone',
+            risk: zone.riskScore
+          }));
         }
+        // Inner accent
+        L.polygon(poly, {
+          color: 'rgba(144,202,249,0.9)',
+          fill: false,
+          weight: 2,
+          dashArray: '6 6'
+        }).addTo(this.overlays);
       }
     }
     // 🟡 Forecast Spread (animated polygon)
     if (this.predictionTimestamp) {
       const pred = this.hazardPredictions.find(p => p.timestamp === this.predictionTimestamp);
       if (pred) {
-        const predColor = this.mapMode === 'Fire' ? 'rgba(255, 193, 7, 0.7)' : 'rgba(33, 150, 243, 0.4)';
+  const predColor = 'rgba(33, 150, 243, 0.4)';
         for (const poly of pred.coordinates) {
           const layer = L.polygon(poly, {
             color: predColor,
@@ -270,9 +249,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     for (const responder of this.responders) {
       const isMyUnit = responder.id === myUnitId;
       const baseIcon = this.responderIconHtml(responder.unitType);
-      const myUnitIcon = this.mapMode === 'Flood'
-        ? `${baseIcon}<span style="font-size:1.1em;">★</span>`
-        : `${baseIcon}<span style="font-size:1.1em;">★</span>`;
+      const myUnitIcon = `${baseIcon}<span style="font-size:1.1em;">★</span>`;
       const icon = L.divIcon({
         className: `responder-icon ${responder.unitType.toLowerCase()}${isMyUnit ? ' my-unit' : ''}`,
         html: isMyUnit ? myUnitIcon : baseIcon
@@ -447,19 +424,19 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       this.legendControl = undefined;
     }
     this.legendControl = L.control({ position: 'topright' });
-    const mode = this.mapMode;
+  const mode = 'Flood';
     this.legendControl.onAdd = () => {
       const div = L.DomUtil.create('div', 'map-legend');
       div.setAttribute('role', 'group');
       div.setAttribute('aria-label', 'Map legend');
       div.innerHTML = `
-        <div class="legend-title">${mode} Layers</div>
-        <div class="legend-row"><span class="legend-swatch active-zone ${mode.toLowerCase()}"></span><span class="legend-label">Active ${mode} Zone</span></div>
+    <div class="legend-title">Flood Layers</div>
+    <div class="legend-row"><span class="legend-swatch active-zone flood"></span><span class="legend-label">Active Flood Zone</span></div>
         <div class="legend-row"><span class="legend-swatch forecast ${mode.toLowerCase()}"></span><span class="legend-label">Forecast Spread</span></div>
         <div class="legend-row"><span class="legend-icon">🧑‍🤝‍🧑</span><span class="legend-label">Victim Cluster</span></div>
-        <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🚑' : '🚑'}</span><span class="legend-label">Responder Unit</span></div>
-  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🏥' : '🏥'}</span><span class="legend-label">Hospital</span></div>
-  <div class="legend-row"><span class="legend-icon">${mode === 'Flood' ? '🛟' : '🛟'}</span><span class="legend-label">Safe Zone</span></div>
+    <div class="legend-row"><span class="legend-icon">🚑</span><span class="legend-label">Responder Unit</span></div>
+  <div class="legend-row"><span class="legend-icon">🏥</span><span class="legend-label">Hospital</span></div>
+  <div class="legend-row"><span class="legend-icon">🛟</span><span class="legend-label">Safe Zone</span></div>
       `;
       return div;
     };
@@ -472,7 +449,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       clearInterval(this.forecastPulseTimer);
       this.forecastPulseTimer = undefined;
     }
-    if (this.mapMode !== 'Flood' || this.forecastLayerRefs.length === 0) return;
+  if (this.forecastLayerRefs.length === 0) return; // flood only
     this.forecastPulseTimer = setInterval(() => {
       this.forecastPulseState = (this.forecastPulseState + 1) % 40; // cycle
       const phase = Math.abs(20 - this.forecastPulseState) / 20; // 0..1..0
@@ -485,14 +462,6 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
 
   private responderIconHtml(type: string): string {
     // Flood mode: prefix with droplet to reinforce context
-    if (this.mapMode === 'Flood') {
-      switch (type) {
-        case 'Ambulance': return '🚑';
-        case 'Fire': return '🚒';
-        case 'Police': return '🚓';
-        default: return '🚨';
-      }
-    }
     switch (type) {
       case 'Ambulance': return '🚑';
       case 'Fire': return '🚒';
@@ -502,21 +471,20 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   }
 
   private riskColor(score: number): string {
-    // For Fire: gradient green (low) to red (high)
-    const r = Math.round(255 * score);
-    const g = Math.round(180 * (1 - score));
-    return `rgb(${r},${g},64)`;
+  // Flood risk visualization (blue intensity)
+  const b = 200 + Math.round(55 * score); // 200-255
+  const g = 150 + Math.round(60 * score); // 150-210
+  return `rgb(50,${g},${b})`;
   }
 
   private facilityIconHtml(type: string): string {
-    const isFlood = this.mapMode === 'Flood';
     switch (type) {
-      case 'Hospital': return isFlood ? '🏥' : '🏥';
-      case 'Shelter': return isFlood ? '🏚️' : '🏚️';
-      case 'SafeZone': return isFlood ? '🛟' : '🛟';
-      case 'RescueZone': return isFlood ? '🛟' : '🛟';
-      case 'Roadblock': return isFlood ? '🚧' : '🚧';
-      default: return isFlood ? '❓' : '❓';
+      case 'Hospital': return '🏥';
+      case 'Shelter': return '🏚️';
+      case 'SafeZone': return '🛟';
+      case 'RescueZone': return '🛟';
+      case 'Roadblock': return '🚧';
+      default: return '❓';
     }
   }
 

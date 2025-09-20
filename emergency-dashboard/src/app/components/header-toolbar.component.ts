@@ -28,11 +28,10 @@ import { MatIconModule } from '@angular/material/icon';
 export class HeaderToolbarComponent {
   @Input() incidents: string[] = [];
   @Input() selectedIncident: string = '';
-  @Input() mapMode: 'Fire' | 'Flood' = 'Fire';
+  // Flood-only: mapMode removed (retained implicit flood context)
   @Input() forecastHour: number = 0;
   @Input() priority: string = 'All';
   @Output() incidentChange = new EventEmitter<string>();
-  @Output() mapModeChange = new EventEmitter<'Fire' | 'Flood'>();
   @Output() forecastHourChange = new EventEmitter<number>();
   @Output() priorityChange = new EventEmitter<string>();
 
@@ -41,9 +40,6 @@ export class HeaderToolbarComponent {
   onIncidentChange(event: any) {
     // Angular Material selectionChange emits { value }
     this.incidentChange.emit(event.value);
-  }
-  onMapModeChange(mode: 'Fire' | 'Flood') {
-    this.mapModeChange.emit(mode);
   }
   onForecastChange(value: number) {
     this.forecastHourChange.emit(Number(value));
