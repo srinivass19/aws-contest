@@ -132,6 +132,46 @@
   .victim-icon.flashing { box-shadow: 0 0 0 4px rgba(255,235,59,0.65); }
 }
 
+/* Individual victim icons */
+.victim-individual-icon {
+  font-size: 1.05rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.96);
+  border: 2px solid #607d8b;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.16);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.victim-individual-icon:hover { transform: translateY(-2px) scale(1.06); box-shadow: 0 4px 10px rgba(0,0,0,0.28); }
+.victim-individual-icon.sev-critical { border-color:#d32f2f; }
+.victim-individual-icon.sev-serious { border-color:#f57c00; }
+.victim-individual-icon.sev-stable { border-color:#388e3c; }
+.victim-individual-icon.prio-immediate { box-shadow: 0 0 0 3px rgba(183,28,28,0.35), 0 1px 4px rgba(0,0,0,0.18); }
+.victim-individual-icon.prio-high { box-shadow: 0 0 0 3px rgba(255,152,0,0.35), 0 1px 4px rgba(0,0,0,0.18); }
+.victim-individual-icon.prio-medium { box-shadow: 0 0 0 3px rgba(25,118,210,0.35), 0 1px 4px rgba(0,0,0,0.18); }
+.victim-individual-icon.prio-low { box-shadow: 0 0 0 3px rgba(96,125,139,0.30), 0 1px 4px rgba(0,0,0,0.18); }
+
+/* Legend severity samples (reuse person glyph with colored ring) */
+:host ::ng-deep .map-legend .victim-sev-sample {
+  font-size: 1.1rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 50%;
+  border: 2px solid #607d8b;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+:host ::ng-deep .map-legend .victim-sev-sample.critical { border-color:#d32f2f; }
+:host ::ng-deep .map-legend .victim-sev-sample.serious { border-color:#f57c00; }
+:host ::ng-deep .map-legend .victim-sev-sample.stable { border-color:#388e3c; }
+
 // Responder icons
 .responder-icon {
   font-size: 2.2rem;
@@ -173,7 +213,29 @@
   letter-spacing: 0.5px;
   margin-bottom: 0.1rem;
   color: #111;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+:host ::ng-deep .map-legend .legend-toggle-btn {
+  margin-left: auto;
+  background: linear-gradient(135deg,#ffffff,#e9eef3);
+  border: 1px solid rgba(0,0,0,0.25);
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  transition: background .25s ease, transform .15s ease, box-shadow .25s ease;
+}
+:host ::ng-deep .map-legend .legend-toggle-btn:hover { background: linear-gradient(135deg,#ffffff,#dae2e9); }
+:host ::ng-deep .map-legend .legend-toggle-btn:active { transform: translateY(1px); box-shadow: 0 1px 1px rgba(0,0,0,0.22); }
+:host ::ng-deep .map-legend .legend-toggle-btn:focus-visible { outline: 2px solid #1976d2; outline-offset: 2px; }
+:host ::ng-deep .map-legend .legend-subtitle { margin-top: 4px; font-weight: 600; font-size: 0.64rem; color: #333; letter-spacing: .4px; }
 :host ::ng-deep .map-legend .legend-row { display: flex; align-items: center; gap: 0.4rem; line-height: 1; }
 :host ::ng-deep .legend-swatch { width: 16px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.25); }
 :host ::ng-deep .legend-swatch.active-zone.fire { background: rgba(255,0,0,0.55); }

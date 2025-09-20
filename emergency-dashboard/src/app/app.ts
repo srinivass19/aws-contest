@@ -37,6 +37,8 @@ export class App {
   private mapModeManualOverride: boolean = false;
   forecastHour: number = 0;
   priority: string = 'All';
+  // Map victim view mode: 'cluster' = aggregated markers, 'individual' = per-victim markers
+  victimViewMode: 'cluster' | 'individual' = 'individual';
 
   notificationEvents: Array<{
     id: string;
@@ -241,7 +243,8 @@ export class App {
           id: `VC-${incidentIdx + 2}${i + 1}01`,
           lat,
           lon,
-          priority
+          priority,
+          victims: []
         });
       }
       result[incident] = clusters;
@@ -288,7 +291,8 @@ export class App {
           id: `VC-${incidentIdx + 2}${i + 1}01`,
           lat,
           lon,
-          priority
+          priority,
+          victims: []
         });
       }
       result[incident] = clusters;
@@ -298,22 +302,75 @@ export class App {
   })();
   mapVictimClusters: MapVictimCluster[] = [];
   predictionTimestamp: string = '2025-09-18T17:00:00Z';
+
+  // Removed earlier duplicate constructor; initialization now handled in unified constructor below.
+
+  /** Generate or update clusters with victim details */
+  private populateVictims(clusters: MapVictimCluster[]) {
+    for (const cluster of clusters) {
+      if (cluster.victims && cluster.victims.length) continue;
+      const base = cluster.priority === 'Immediate' ? 7 : cluster.priority === 'High' ? 6 : cluster.priority === 'Medium' ? 5 : 4;
+      const hash = Array.from(cluster.id).reduce((a,c)=>a + c.charCodeAt(0),0);
+      const extra = hash % 3; // 0..2
+      const total = base + extra;
+      const needs = ['Medical','Evacuation','Water','Food','Stabilization'];
+      const severities: Array<'critical'|'serious'|'stable'> = ['critical','serious','stable'];
+      const statuses: Array<'awaiting'|'treated'|'evacuated'> = ['awaiting','treated','evacuated'];
+      cluster.victims = Array.from({length: total}).map((_,i)=>({
+        id: `${cluster.id}-V${i+1}`,
+        need: needs[(hash + i) % needs.length],
+        severity: severities[(hash + i) % severities.length],
+        status: statuses[(hash + i) % statuses.length]
+      }));
+    }
+  }
+
+  /** Called when incident changes or on init to sync all map inputs */
+  updateIncidentData() {
+    const incident = this.selectedIncident;
+    this._hazardZones = this.incidentHazardZones[incident] || [];
+    this._hazardPredictions = this.incidentHazardPredictions[incident] || [];
+    this._responders = this.incidentResponders[incident] || [];
+    this._routes = this.incidentRoutes[incident] || [];
+    this._facilities = this.incidentFacilities[incident] || [];
+    const clusters = (this.allMapVictimClusters[incident] || []);
+    this.populateVictims(clusters);
+    this.mapVictimClusters = clusters;
+    // Prediction timestamp default
+    if (this._hazardPredictions.length && !this.predictionTimestamp) {
+      this.predictionTimestamp = this._hazardPredictions[0].timestamp;
+    }
+    // Adjust center
+    const center = this.incidentCenters[incident];
+    if (center) this.mapCenter = center;
+    this.cdr.markForCheck();
+  }
+
+  toggleVictimViewMode() {
+    this.victimViewMode = this.victimViewMode === 'individual' ? 'cluster' : 'individual';
+    // Trigger change detection so child map re-renders with updated showIndividualVictims binding
+    this.cdr.markForCheck();
+  }
   clusters: VictimCluster[] = [];
   // Loading state for victim list
   loadingVictimClusters: boolean = false;
 
   constructor(private cdr: ChangeDetectorRef, private mapboxService: MapboxService) {
-    this.incidents = [
-      'Fire - Downtown Warehouse',
-      'Flood - Riverside District',
-      'Fire - Industrial Park',
-      'Flood - East Valley',
-      'Fire - North Hills',
-      'Flood - South Meadows',
-      'Fire - City Center',
-      'Flood - West End'
-    ];
-    this.selectedIncident = this.incidents.length > 0 ? this.incidents[0] : '';
+    // Derive incidents dynamically from centers (retains previous manual ordering if required)
+    this.incidents = Object.keys(this.incidentCenters);
+    if (!this.incidents.length) {
+      this.incidents = [
+        'Fire - Downtown Warehouse',
+        'Flood - Riverside District',
+        'Fire - Industrial Park',
+        'Flood - East Valley',
+        'Fire - North Hills',
+        'Flood - South Meadows',
+        'Fire - City Center',
+        'Flood - West End'
+      ];
+    }
+    this.selectedIncident = this.incidents[0] || '';
 
     // Capture base forecast polygons (deep copy)
     for (const incident of Object.keys(this.incidentHazardPredictions)) {
@@ -402,6 +459,9 @@ export class App {
       this.updateIncidentMapData();
       this.cdr.markForCheck();
     }
+
+    // Populate initial incident dependent data (victims etc.)
+    this.updateIncidentData();
   }
 
   onForecastHourChange(hour: number) {
@@ -528,21 +588,29 @@ export class App {
   updateVictimClusters() {
     // Map MapVictimCluster[] to VictimCluster[] for the selected incident, using the priority from allMapVictimClusters
     const mapClusters = this.allMapVictimClusters[this.selectedIncident] || [];
-    this.clusters = mapClusters.map((c, idx) => ({
-      id: c.id,
-      name: `Cluster ${idx + 1}`,
-      location: { lat: c.lat, lon: c.lon, uncertainty: (
-        c.priority === 'Immediate' ? 30 :
-        c.priority === 'High' ? 40 :
-        c.priority === 'Medium' ? 50 :
-        60
-      ) },
-      numVictims: 3 + idx,
-      needs: c.priority === 'Immediate' ? ['Medical', 'Evacuation'] : (c.priority === 'High' ? ['Medical'] : ['Evacuation']),
-      confidence: c.priority === 'Immediate' ? 0.9 : (c.priority === 'High' ? 0.7 : 0.5),
-      status: idx % 3 === 0 ? 'en route' : (idx % 3 === 1 ? 'on scene' : 'rescued'),
-      priority: c.priority
-    }));
+    // Ensure victim arrays are populated (clusters were initially created with victims: [])
+    if ((this as any).populateVictims) {
+      try { (this as any).populateVictims(mapClusters); } catch {}
+    }
+    this.clusters = mapClusters.map((c, idx) => {
+      const victimCount: number = (c as any).victims ? (c as any).victims.length : 0;
+      const uniqueNeeds: string[] = (c as any).victims ? Array.from(new Set((c as any).victims.map((v: any) => v.need))).slice(0,3) as string[] : [];
+      return {
+        id: c.id,
+        name: `Cluster ${idx + 1}`,
+        location: { lat: c.lat, lon: c.lon, uncertainty: (
+          c.priority === 'Immediate' ? 30 :
+          c.priority === 'High' ? 40 :
+          c.priority === 'Medium' ? 50 :
+          60
+        ) },
+        numVictims: victimCount,
+  needs: uniqueNeeds.length ? uniqueNeeds : (c.priority === 'Immediate' ? ['Medical','Evacuation'] : (c.priority === 'High' ? ['Medical'] : ['Evacuation'])),
+        confidence: c.priority === 'Immediate' ? 0.9 : (c.priority === 'High' ? 0.7 : 0.55),
+        status: idx % 3 === 0 ? 'en route' : (idx % 3 === 1 ? 'on scene' : 'rescued'),
+        priority: c.priority
+      };
+    });
     this.cdr.markForCheck();
   }
 
