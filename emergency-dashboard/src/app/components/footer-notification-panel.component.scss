@@ -3,7 +3,7 @@
   position: sticky;
   bottom: 0;
   width: 100%;
-  height: 115px; /* slightly reduced to reclaim vertical space */
+  height: var(--footer-height); /* dynamic from root variable */
   background: #1f1f21;
   color: #fff;
   padding: 0.45rem 1.25rem 0.55rem 1.25rem;
@@ -62,3 +62,72 @@
 .timestamp { font-size: 0.7rem; color: #9ea2a8; min-width: 54px; }
 .message { flex: 1 1 auto; }
 .no-events { color:#888; font-style: italic; padding:0.4rem 0; font-size:0.75rem; }
+
+/* Fade-in animation for first appearance */
+@keyframes notifFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: notifFadeIn .38s ease-out both; }
+
+/* Slight stagger using nth-child (lightweight, no JS) */
+.notification-item.fade-in:nth-child(1) { animation-delay: 0ms; }
+.notification-item.fade-in:nth-child(2) { animation-delay: 40ms; }
+.notification-item.fade-in:nth-child(3) { animation-delay: 80ms; }
+.notification-item.fade-in:nth-child(4) { animation-delay: 120ms; }
+.notification-item.fade-in:nth-child(5) { animation-delay: 160ms; }
+
+/* Mark-all button alignment */
+.mark-all-btn { margin-left: auto; }
+
+/* Footer action buttons */
+.footer-btn {
+  --btn-bg: rgba(255,255,255,0.10);
+  --btn-bg-hover: rgba(255,255,255,0.18);
+  --btn-bg-active: rgba(255,255,255,0.26);
+  --btn-border: rgba(255,255,255,0.22);
+  --btn-color: #f5f7fa;
+  font: 500 0.7rem/1.1 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif;
+  padding: 4px 10px 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: .3px;
+  transition: background .18s, border-color .18s, color .18s, box-shadow .18s;
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.footer-btn:hover { background: var(--btn-bg-hover); }
+.footer-btn:active { background: var(--btn-bg-active); }
+.footer-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 2px rgba(66,165,245,0.65), 0 0 0 4px rgba(25,118,210,0.35);
+}
+.footer-btn[disabled], .footer-btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Icon-only variant */
+.footer-btn--icon {
+  padding: 4px;
+  width: 26px;
+  height: 26px;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+.footer-btn--icon .btn-label-text { display: none; }
+
+/* Subtle tooltip using native title attribute; ensure consistent cursor */
+.footer-btn--icon[title] { cursor: pointer; }
+
+/* Align icon button within notification item */
+.notification-item .footer-btn--icon { margin-left: auto; }

@@ -8,12 +8,29 @@
       <option [selected]="filter === 'responder'" value="responder">Responder Status</option>
       <option [selected]="filter === 'other'" value="other">Other</option>
     </select>
+    <button
+      class="footer-btn footer-btn--icon mark-all-btn"
+      type="button"
+      title="Mark all read"
+      aria-label="Mark all notifications as read"
+      (click)="onMarkAll()"
+      [disabled]="!hasUnread()"
+    >✓✓</button>
   </div>
   <div class="notification-list">
-    <div *ngFor="let event of filteredEvents" class="notification-item" [class.read]="event.read">
+    <div *ngFor="let event of filteredEvents" class="notification-item fade-in" [class.read]="event.read">
       <span class="timestamp">{{ event.timestamp | date:'shortTime' }}</span>
       <span class="message">{{ event.message }}</span>
-  <button *ngIf="!event.read" (click)="onMarkAsRead(event.id)">Mark as read</button>
+  <button
+    *ngIf="!event.read"
+    class="footer-btn footer-btn--icon"
+    (click)="onMarkAsRead(event.id)"
+    type="button"
+    title="Mark as read"
+    aria-label="Mark notification as read"
+  >
+    ✔
+  </button>
     </div>
     <div *ngIf="filteredEvents.length === 0" class="no-events">No events to display.</div>
   </div>

@@ -21,6 +21,7 @@ export class FooterNotificationPanelComponent {
   @Input() filter: string = 'all';
   @Output() filterChange = new EventEmitter<string>();
   @Output() markAsRead = new EventEmitter<string>();
+  @Output() markAllRead = new EventEmitter<void>();
 
   get filteredEvents() {
     if (this.filter === 'all') return this.events;
@@ -34,5 +35,14 @@ export class FooterNotificationPanelComponent {
 
   onMarkAsRead(id: string) {
     this.markAsRead.emit(id);
+  }
+
+  hasUnread(): boolean {
+    return this.events.some(e => !e.read);
+  }
+
+  onMarkAll() {
+    if (!this.hasUnread()) return;
+    this.markAllRead.emit();
   }
 }

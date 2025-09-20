@@ -480,6 +480,12 @@ export class App {
     if (event) event.read = true;
   }
 
+  onMarkAllNotificationsRead() {
+    for (const e of this.notificationEvents) {
+      e.read = true;
+    }
+  }
+
   onMapModeChange(mode: 'Fire' | 'Flood') {
     this.mapModeManualOverride = true; // user explicitly changed mode
     this.mapMode = mode;
