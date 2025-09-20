@@ -34,8 +34,14 @@
         <div class="status">Status: <span class="status-label">{{ cluster.status }}</span></div>
       </div>
       <div class="actions">
-        <button mat-stroked-button color="primary" (click)="assignResponder.emit(cluster.id)">Assign Responder</button>
-        <button mat-stroked-button color="accent" (click)="addNote.emit(cluster.id)">Add Note</button>
+        <button mat-stroked-button color="primary" (click)="assignResponder.emit(cluster.id)" class="action-btn assign" aria-label="Assign responder to {{cluster.name}}">
+          <span class="btn-icon">🚑</span>
+          <span class="btn-label">Assign</span>
+        </button>
+        <button mat-stroked-button color="accent" (click)="addNote.emit(cluster.id)" class="action-btn note" aria-label="Add note for {{cluster.name}}">
+          <span class="btn-icon">📝</span>
+          <span class="btn-label">Note</span>
+        </button>
       </div>
     </li>
   </ul>
