@@ -1,5 +1,4 @@
 import { Component, Input, Output, EventEmitter, AfterViewInit, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
-// import * as L from 'leaflet';
 import { Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
@@ -56,7 +55,7 @@ export interface MapFacility {
   styleUrls: ['./central-map-panel.component.scss']
 })
 export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDestroy {
-  private L: typeof import('leaflet') | undefined;
+  private L: any; // assigned only in browser to avoid SSR window references
   constructor(@Inject(PLATFORM_ID) private platformId: Object, private victimFlashService: VictimFlashService) {}
   @Input() hazardZones: MapHazardZone[] = [];
   @Input() hazardPredictions: MapHazardPrediction[] = [];
@@ -161,19 +160,43 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     // If we somehow retained a live map instance, just bail out
     if (this.map) return;
 
-    const L = await import('leaflet');
-    this.L = L;
+    // Load Leaflet only in browser to avoid SSR window reference errors.
+    try {
+      const leafletModule: any = await import('leaflet');
+      const Lcand = leafletModule?.default && leafletModule.default.map ? leafletModule.default : leafletModule;
+      if (!Lcand || typeof Lcand.map !== 'function') {
+        console.error('[CentralMapPanel] Leaflet module missing expected map() API. Keys:', Object.keys(leafletModule || {}));
+        return;
+      }
+      this.L = Lcand;
+      // Inject CSS dynamically (some SSR setups ignore side-effect CSS imports)
+      const existing = document.querySelector('link[data-leaflet-css]');
+      if (!existing) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.setAttribute('data-leaflet-css','true');
+        document.head.appendChild(link);
+      }
+    } catch (err) {
+      console.error('[CentralMapPanel] Failed to load Leaflet in browser context', err);
+      return;
+    }
 
-    this.map = L.map(mapEl, {
+    const Lfinal = this.L!; // non-null after successful guard above
+    this.map = Lfinal.map(mapEl, {
       center: [37.7749, -122.4194],
-      zoom: 13,
-      layers: [
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors'
-        })
-      ]
+      zoom: 13
     });
-    this.overlays = L.layerGroup();
+    // Add base tile layer separately (avoids map factory expecting a different namespace shape)
+    try {
+      Lfinal.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(this.map);
+    } catch (tileErr) {
+      console.error('[CentralMapPanel] Failed to add tile layer', tileErr);
+    }
+    this.overlays = Lfinal.layerGroup();
     this.overlays.addTo(this.map);
     // Decide tooltip enablement (disable on narrow/mobile screens)
     try {
