@@ -74,6 +74,8 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   @Input() facilities: MapFacility[] = [];
   @Input() predictionTimestamp: string = '';
   @Input() mapMode: 'Fire' | 'Flood' = 'Fire';
+  // Optional external center (e.g., incident epicenter). When it changes we fly the map there.
+  @Input() mapCenter: [number, number] | null = null;
   @Output() predictionTimestampChange = new EventEmitter<string>();
   // Lifecycle events for flashing (auto/service). External (input-bound) flashes are not emitted.
   @Output() victimFlashStarted = new EventEmitter<{ id: string; source: 'auto' | 'service' }>();
@@ -185,7 +187,7 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
 
     const Lfinal = this.L!; // non-null after successful guard above
     this.map = Lfinal.map(mapEl, {
-      center: [37.7749, -122.4194],
+      center: this.mapCenter || [37.7749, -122.4194],
       zoom: 13
     });
     // Add base tile layer separately (avoids map factory expecting a different namespace shape)
@@ -206,6 +208,10 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
       }
     } catch {}
     this.renderLayers();
+    if (this.mapCenter) {
+      // Defer slightly to allow layout / size invalidation before flyTo
+      try { setTimeout(() => this.safeRecenter(this.mapCenter!), 120); } catch {}
+    }
     // Ensure Leaflet recalculates dimensions after being placed in a flex container
     try { setTimeout(() => { this.map?.invalidateSize?.(); }, 60); } catch {}
     // Subscribe to service-driven flash requests (browser only)
@@ -252,8 +258,13 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
   }
 
   ngOnChanges(changes: SimpleChanges) {
+    // Re-render layers if hazard / victims / mode changes
     if (this.map && this.L) {
       this.renderLayers();
+    }
+    // Recenter on mapCenter updates
+    if (changes['mapCenter'] && this.map && this.mapCenter) {
+      this.safeRecenter(this.mapCenter);
     }
     if (changes['victimClusters']) {
       this.handleNewVictims();
@@ -264,6 +275,21 @@ export class CentralMapPanelComponent implements AfterViewInit, OnChanges, OnDes
     if (changes['priorityFlashColors']) {
       this.updateFlashingClasses();
     }
+  }
+
+  /** Smoothly move map center if sufficiently different */
+  private safeRecenter(center: [number, number]) {
+    if (!this.map) return;
+    try {
+      const cur = this.map.getCenter?.();
+      if (!cur) { this.map.setView(center, this.map.getZoom?.() || 13); return; }
+      const deltaLat = Math.abs(cur.lat - center[0]);
+      const deltaLng = Math.abs(cur.lng - center[1]);
+      // Only animate if moved more than ~30 meters (~0.00027 deg lat); else skip
+      if (deltaLat > 0.00027 || deltaLng > 0.00027) {
+        this.map.flyTo(center, this.map.getZoom?.() || 13, { duration: 0.65 });
+      }
+    } catch {}
   }
 
   private renderLayers() {
